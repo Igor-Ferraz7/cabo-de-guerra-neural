@@ -142,3 +142,26 @@ Nenhuma imagem é gravada em disco em nenhum momento.
 `jogo/jogo_prototipo.py` (versão OpenCV, janela do desktop) continua ali e
 funcionando, como plano de retorno. A lógica de semelhança e a máquina de
 estados do servidor são **as mesmas**, copiadas sem alteração.
+
+## Registrar um teste
+
+Aperte **`L`** (ou o botão em **REGISTRO DO TESTE**, no painel `C`). Dê um nome
+antes, se quiser: ajuda a achar depois.
+
+Ao parar, o jogo escreve dois arquivos em `registros/`:
+
+| Arquivo | O que é |
+|---|---|
+| `*.md` | **relatório legível**, que aponta o que saiu fora do esperado |
+| `*.jsonl` | um JSON por quadro, para análise em script |
+
+Separados em `registros/real/` e `registros/simulado/`. Com o modo ensaio
+ligado o teste entra como simulado automaticamente — os números de detecção
+de um ensaio não valem como previsão para a feira.
+
+**Nenhuma imagem é gravada.** O `.jsonl` guarda os 17 pontos de cada jogador,
+não a imagem — o que permite reexecutar a partida fora do jogo e cabe em
+alguns KB, ao contrário de um vídeo.
+
+Os três primeiros quadros saem das contas: a primeira inferência do torch leva
+3–4 segundos e não representa nada.

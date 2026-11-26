@@ -204,6 +204,13 @@ function conectar() {
     $('#fps').textContent = dados.fps.toFixed(1);
     $('#lat').textContent = Math.round(recebidoEm - dados.ts);
     $('#modelo').textContent = dados.modelo;
+    // o servidor nao tem como medir a ida e volta: quem mede e o navegador
+    if (recebidoEm - latEnviadaEm > 1000) {
+      latEnviadaEm = recebidoEm;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ acao: 'lat', ms: recebidoEm - dados.ts }));
+      }
+    }
     if (typeof dados.solo === 'boolean' &&
         (dados.solo !== modoSolo || dados.pausado !== modoPausa)) {
       modoSolo = dados.solo; modoPausa = dados.pausado; pintarModos();
@@ -218,6 +225,8 @@ function enviarAcao(acao) {
 
 // ------------------------------------------------------------- modos de ensaio
 let modoSolo = false, modoPausa = false;
+let gravando = false;
+let latEnviadaEm = 0;
 
 // ajustes de imagem do lado do navegador
 let zoomDigital = 1;              // 1 = sem zoom
@@ -226,6 +235,9 @@ let modoEnq = 'preencher';        // 'preencher' (cover) ou 'inteiro' (contain)
 function pintarModos() {
   $('#m-ensaio').classList.toggle('escondido', !modoSolo);
   $('#m-pausa').classList.toggle('escondido', !modoPausa);
+  $('#m-gravando').classList.toggle('escondido', !gravando);
+  $('#cfg-registrar').classList.toggle('gravando', gravando);
+  $('#cfg-registrar').querySelector('.marca').textContent = gravando ? 'GRAVANDO' : '';
   for (const [sel, lig] of [['#cfg-solo', modoSolo], ['#cfg-pausa', modoPausa]]) {
     const b = $(sel);
     b.classList.toggle('ligado', lig);
@@ -249,6 +261,20 @@ function alternarPausa(v) {
   pintarModos();
 }
 
+function alternarRegistro(v) {
+  gravando = (v === undefined) ? !gravando : v;
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      acao: 'registrar',
+      ligado: gravando,
+      tipo: modoSolo ? 'simulado' : 'real',   // ensaio nunca conta como real
+      rotulo: ($('#cfg-rotulo').value || '').trim(),
+    }));
+  }
+  pintarModos();
+}
+
+$('#cfg-registrar').addEventListener('click', () => alternarRegistro());
 $('#cfg-solo').addEventListener('click', () => alternarSolo());
 $('#cfg-pausa').addEventListener('click', () => alternarPausa());
 pintarModos();
@@ -737,6 +763,7 @@ document.addEventListener('keydown', (e) => {
   if (k === 'c') { abrirConfig(elConfig.classList.contains('escondido')); return; }
   if (k === 'e') { alternarSolo(); return; }
   if (k === 'p') { alternarPausa(); return; }
+  if (k === 'l') { alternarRegistro(); return; }
   if (!elConfig.classList.contains('escondido')) {
     if (e.key === 'Escape') abrirConfig(false);
     return;                      // com a configuracao aberta, nada mais responde

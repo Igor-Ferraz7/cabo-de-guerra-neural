@@ -37,6 +37,8 @@ from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
 from ultralytics import YOLO
 
+from registro import Registrador
+
 AQUI = Path(__file__).parent
 WEB = AQUI.parent / "web"
 
@@ -249,6 +251,23 @@ def criar_app(args):
         fps, t_ant = 0.0, None
         solo = False        # modo ensaio: uma pessoa joga contra si mesma
         pausado = False
+        registrador = None  # grava quadro a quadro quando ligado
+        latencia = None     # ida e volta medida pelo navegador
+
+        def abrir_registro(tipo, rotulo):
+            return Registrador(tipo, rotulo, meta={
+                "modelo": nome_modelo, "imgsz": args.imgsz, "conf": args.conf,
+                "modo ensaio": "ligado" if solo else "desligado",
+            })
+
+        def fechar_registro(reg):
+            if reg is None:
+                return
+            caminho = reg.fechar()
+            if caminho:
+                print(f"[registro] relatório: {caminho}", flush=True)
+            else:
+                print("[registro] nenhum quadro gravado", flush=True)
         try:
             while True:
                 msg = await sock.receive()
@@ -269,6 +288,18 @@ def criar_app(args):
                         print(f"[ensaio] {'ligado' if solo else 'desligado'}", flush=True)
                     elif acao == "pausa":
                         pausado = bool(cmd.get("ligado"))
+                    elif acao == "lat":
+                        latencia = float(cmd.get("ms") or 0) or None
+                    elif acao == "registrar":
+                        if cmd.get("ligado"):
+                            fechar_registro(registrador)
+                            tipo = cmd.get("tipo") or ("simulado" if solo else "real")
+                            registrador = abrir_registro(tipo, cmd.get("rotulo", ""))
+                            print(f"[registro] gravando ({tipo}): "
+                                  f"{registrador.caminho_jsonl.name}", flush=True)
+                        else:
+                            fechar_registro(registrador)
+                            registrador = None
                     continue
 
                 dados = msg.get("bytes")
@@ -284,11 +315,39 @@ def criar_app(args):
                     continue
                 H, W = img.shape[:2]
 
+                t_inf = time.perf_counter()
                 jogadores = await asyncio.to_thread(detectar, modelo, img, args.imgsz, args.conf)
+                ms_inf = (time.perf_counter() - t_inf) * 1000
+                detectados = len(jogadores)
                 if solo and len(jogadores) == 1:
                     jogadores.append(duplicar(jogadores[0], W))
                     jogadores.sort(key=lambda j: (j["box"][0] + j["box"][2]) / 2)
                 jogo.atualizar(jogadores, pausado)
+
+                if registrador is not None:
+                    # "n" é quantos o YOLO achou de verdade, antes da cópia do
+                    # modo ensaio: senão o registro esconderia o que interessa
+                    registrador.anotar(
+                        ms=round(ms_inf, 1),
+                        n=detectados,
+                        pts=[int((j["cf"] >= CONF_MIN).sum()) for j in jogadores[:2]],
+                        score=[round(float(j["score"]), 2) for j in jogadores[:2]],
+                        estado=jogo.estado,
+                        sem=None if jogo.sim_atual is None else round(jogo.sim_atual, 1),
+                        segs=jogo.segs,
+                        corda=jogo.corda,
+                        lider=jogo.lider,
+                        lat=None if latencia is None else round(latencia, 1),
+                        solo=solo,
+                        # Os 17 pontos normalizados de cada jogador. É o que
+                        # permite reexecutar a partida inteira fora do jogo:
+                        # recalcular semelhança, testar outra regra, treinar a
+                        # MLP. Um minuto de partida dá alguns KB — ou seja,
+                        # dá para mandar por mensagem, ao contrário do vídeo.
+                        kp=[[[round(float(x) / W, 3), round(float(y) / H, 3)]
+                             for x, y in j["kp"]] for j in jogadores[:2]],
+                        cf=[[round(float(c), 2) for c in j["cf"]] for j in jogadores[:2]],
+                    )
 
                 agora = time.time()
                 if t_ant is not None:
@@ -332,6 +391,8 @@ def criar_app(args):
                 await sock.send_text(json.dumps(payload))
         except Exception as e:
             print("[ws] fim:", type(e).__name__, e, flush=True)
+        finally:
+            fechar_registro(registrador)   # não perde o teste se a aba fechar
 
     app.mount("/", StaticFiles(directory=str(WEB), html=True), name="web")
     return app

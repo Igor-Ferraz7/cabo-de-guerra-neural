@@ -211,6 +211,21 @@ Dois controles são feitos **no navegador** e por isso funcionam em qualquer câ
 - A fonte `PressStart2P.ttf` foi removida: sobra da identidade antiga, não referenciada.
 - O `CLAUDE.md` contém dois links de artifact privados (linhas da tabela de estado). Decidir se saem antes do primeiro `push`, porque o histórico do git é público para sempre.
 
+**Registro de testes (`jogo/registro.py`).** Substitui mandar vídeo para análise. Tecla `L` ou botão no painel `C`.
+
+- Uma linha por quadro em `registros/{real,simulado}/*.jsonl`: `ms` de inferência, `n` de pessoas, pontos confiáveis, `score`, estado, semelhança, segmentos, corda, latência, **e os 17 pontos normalizados de cada jogador**.
+- Os pontos são o que importa: permitem reexecutar a partida fora do jogo (recalcular semelhança, testar outra regra, treinar a MLP) e cabem em alguns KB. Um vídeo de 67 s tem 84 MB.
+- Ao parar, escreve um `.md` que **aponta problemas**, não só números: FPS baixo, detecção instável, poucos segmentos (gente cortada pela borda), latência alta. É esse arquivo que se manda para análise.
+- `n` guarda quantos o YOLO achou **de verdade**, antes da cópia do modo ensaio.
+- Os 3 primeiros quadros saem das estatísticas: a primeira inferência do torch leva 3–4 s. Sem isso a latência p90 de um teste real deu 921 ms em vez de 102 ms.
+- O tipo (real/simulado) fica na pasta **e** dentro do arquivo. Modo ensaio ligado ⇒ simulado.
+- Os `.jsonl` são ignorados pelo git; os `.md` ficam versionados.
+- **Nenhuma imagem é gravada em nenhum momento.**
+
+**Direção de arte:** está toda em `ARTE.md` — identidade travada, lutadores, cartazes, e a fila de ideias de arte por ordem de retorno. Não rediscutir em conversa o que está na seção "Decidido".
+
+**Medição de `imgsz`** (um quadro do teste de perto, 26/11): 640 → 8,5 FPS e **só 1 pessoa**; 480 → 15,0 FPS, 23 pontos; 384 → 17,9; 320 → 20,7; 256 → **25,4 FPS e 24 pontos**. Menor foi mais rápido **e não pior**. **Ressalva séria:** isso é um quadro, de perto. A 2,5 m a conclusão pode inverter. Refazer a medição na distância real antes de mudar o padrão.
+
 **Sem cache.** O servidor manda `Cache-Control: no-store` em tudo. Sem isso o navegador continuava rodando o `app.js` antigo depois de editar o arquivo — o sintoma é "mudei o código e nada aconteceu".
 
 **Seleção de lutador (`web/`):** 8 retratos originais importados do protótipo "Punho de Nanquim". A escolha é feita **pelo corpo**, com os mesmos pontos do YOLO — numa feira os jogadores estão a 2,5 m do notebook, longe do teclado:

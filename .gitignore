@@ -13,3 +13,7 @@ captura_*.png
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Registros de teste: os relatórios .md ficam versionados (são pequenos e
+# contam a história), os dados quadro a quadro não.
+registros/**/*.jsonl

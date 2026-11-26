@@ -20,6 +20,7 @@
 <div id="modos">
   <span id="m-ensaio" class="bangers escondido">MODO ENSAIO</span>
   <span id="m-pausa" class="bangers escondido">PAUSA</span>
+  <span id="m-gravando" class="bangers escondido">● GRAVANDO TESTE</span>
 </div>
 
 <!-- cartaz de HQ: entra batendo, some sozinho -->
@@ -197,6 +198,26 @@
         voc&ecirc; tem de reproduzi-la na etapa <b>copie a pose</b>. Segurou parado, nota
         alta; mexeu, cai. D&aacute; para percorrer a rodada inteira sem segunda pessoa.
         <b>Desligue antes da feira.</b>
+      </p>
+
+      <h3 class="bangers" style="margin-top:2.2vmin">REGISTRO DO TESTE</h3>
+      <div class="aj">
+        <span class="aj-rot">Nome do teste</span>
+        <input type="text" id="cfg-rotulo" maxlength="40" placeholder="ex: 3m-de-distancia">
+      </div>
+      <div id="cfg-reg">
+        <button id="cfg-registrar" class="cam">
+          <span class="n">L</span>
+          <span class="rot">Gravar dados deste teste</span>
+          <span class="marca"></span>
+        </button>
+      </div>
+      <p class="cfg-pe">
+        Grava um n&uacute;mero por quadro &mdash; tempo de infer&ecirc;ncia, pessoas detectadas,
+        pontos confi&aacute;veis, semelhan&ccedil;a &mdash; e, ao parar, escreve um relat&oacute;rio em
+        <code>registros/</code> apontando o que saiu fora do esperado.
+        <b>Nenhuma imagem &eacute; gravada.</b> Com o modo ensaio ligado o teste
+        entra como <b>simulado</b>; sen&atilde;o, como <b>real</b>.
       </p>
     </div>
   </div>
