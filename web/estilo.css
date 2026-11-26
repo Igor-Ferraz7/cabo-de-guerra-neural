@@ -1,0 +1,569 @@
+/* ==========================================================================
+   Cabo de Guerra Neural - estetica "Punho de Nanquim"
+   Arcade de luta dos anos 90 em papel de HQ: tinta quase preta, papel creme,
+   reticula, raios girando, placas tortas com sombra dura e Bangers nos
+   letreiros.
+
+   IDENTIDADE TRAVADA (2a versao, 25/11 a noite). Nao muda mais ate o
+   workshop, porque a captura da Figura 2 do banner sai desta tela.
+   - Cores dos jogadores continuam amarelo/rosa, as mesmas da Figura 1.
+   - A camera com os esqueletos continua visivel na partida. Os retratos
+     entram como avatar no canto, nunca por cima do video.
+   ========================================================================== */
+
+@font-face { font-family: 'Bangers'; src: url('fontes/Bangers.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'OS'; src: url('fontes/OS-Regular.ttf') format('truetype'); font-weight: 400; }
+@font-face { font-family: 'OS'; src: url('fontes/OS-Bold.ttf') format('truetype'); font-weight: 700; }
+
+:root {
+  --tinta:  #121015;
+  --papel:  #fff8e7;
+  --j1:     #f5c542;   /* Jogador 1 - mesma da Figura 1 do banner */
+  --j2:     #ec5ca0;   /* Jogador 2 - mesma da Figura 1 do banner */
+  --cap:    #ffe14d;
+  --cy:     #00e5ff;
+  --mg:     #ff2d8a;
+  --cinza:  #a9a294;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; min-width: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--tinta);
+  color: var(--papel);
+  font: 700 16px/1.4 'OS', system-ui, sans-serif;
+  overflow: hidden;
+  /* cursor temático em vez de escondido: dá para operar o estande sem
+     perder o mouse, e o desenho segue o traço de nanquim do resto */
+  cursor: url('cursores/nanquim.svg') 3 2, auto;
+}
+
+.bangers {
+  font-family: 'Bangers', Impact, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.09em;      /* Bangers e estreita: sem respiro vira borrao */
+  line-height: 1;
+}
+
+/* letreiro com contorno e fantasma ciano/magenta - a assinatura do estilo.
+   Tudo em em para o efeito encolher junto com a fonte: em px, um letreiro
+   pequeno fica com mais contorno que letra. */
+.grito {
+  color: var(--cap);
+  -webkit-text-stroke: 0.035em var(--tinta);
+  paint-order: stroke fill;
+  text-shadow: -0.055em 0 0 var(--cy), 0.055em 0 0 var(--mg), 0.08em 0.09em 0 #000;
+}
+
+/* ====================================================== camera (fundo de tudo) */
+#palco { position: fixed; inset: 0; overflow: hidden; background: #05060a; }
+#video, #esqueletos, #textura { position: absolute; inset: 0; width: 100%; height: 100%; }
+#video {
+  /* o recorte da analise acompanha estas duas variaveis (ver recorteFonte) */
+  object-fit: var(--fit, cover);
+  transform: scaleX(-1) scale(var(--zoom, 1));   /* espelhado, como num espelho */
+  filter: saturate(0.85) contrast(1.08);
+}
+#textura {
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, transparent 40%, rgba(5,6,10,0.88) 100%),
+    radial-gradient(rgba(0,0,0,0.42) 1.5px, transparent 1.9px);
+  background-size: auto, 8px 8px;
+}
+body.selecionando #video { filter: saturate(0.5) brightness(0.42) contrast(1.1); }
+
+/* raios girando, usados nos quadros da selecao */
+.raios {
+  position: absolute; left: 50%; top: 58%; width: 230%; aspect-ratio: 1;
+  translate: -50% -50%; pointer-events: none;
+  background: repeating-conic-gradient(#0000 0 6deg, #00000026 6deg 12deg);
+  animation: girar 24s steps(48) infinite;
+}
+.l2 .raios, .a2 .raios { animation-direction: reverse; }
+@keyframes girar { to { rotate: 1turn; } }
+
+.retic {
+  position: absolute; inset: auto 0 0 0; height: 55%; pointer-events: none; opacity: 0.32;
+  background: radial-gradient(#000 2.3px, transparent 2.7px) 0 0 / 11px 11px;
+  -webkit-mask: linear-gradient(transparent, #000); mask: linear-gradient(transparent, #000);
+}
+
+.escondido { display: none !important; }
+
+/* ====================================================== faixas comuns */
+.faixa {
+  display: flex; align-items: center; gap: 1.4vmin;
+  padding: 1.1vmin 1.8vmin;
+  background: rgba(10,8,12,0.92);
+  border-bottom: 4px solid #000;
+}
+.logo { font-size: 3.8vmin; transform: skew(-6deg); white-space: nowrap; }
+.logo.mini { font-size: 2.6vmin; }
+.sub {
+  font-size: 2.1vmin; background: var(--cap); color: var(--tinta);
+  padding: 0.7vmin 1.6vmin 0.4vmin; border: 3px solid #000;
+  box-shadow: 4px 4px 0 var(--papel); transform: skew(-8deg);
+}
+.pill {
+  margin-left: auto; font-size: 1.7vmin; background: var(--papel); color: var(--tinta);
+  padding: 0.7vmin 1.3vmin 0.4vmin; border: 3px solid #000;
+  box-shadow: 4px 4px 0 var(--cy); transform: skew(-8deg);
+}
+.diag {
+  font: 700 1.25vmin/1.4 'OS', sans-serif; color: var(--cinza);
+  font-variant-numeric: tabular-nums; min-width: 16vmin; text-align: right;
+}
+.diag .sep { opacity: 0.4; }
+
+/* ====================================================== TELA: SELECAO */
+#selecao {
+  position: fixed; inset: 0;
+  display: grid; grid-template-rows: auto 1fr auto auto;
+}
+#selecao .faixa { justify-content: space-between; }
+#sel-aviso {
+  font-size: 1.5vmin; color: var(--cap); text-align: right; min-width: 22vmin;
+}
+
+.arena {
+  display: grid; grid-template-columns: 1fr 15vmin 1fr;
+  gap: 1.6vmin; align-items: center; padding: 1.6vmin 2vmin;
+  min-height: 0;
+}
+.lutador { display: flex; flex-direction: column; gap: 1vmin; min-height: 0; }
+
+.quadro {
+  position: relative; height: 44vh; overflow: hidden;
+  border: 5px solid #000; background: var(--fc, #444);
+  box-shadow: 8px 8px 0 #000;
+  transition: background 0.2s steps(2);
+}
+.l2 .quadro { box-shadow: -8px 8px 0 #000; }
+
+.quadro .fig {
+  position: absolute; bottom: 0; left: 50%; height: 108%; width: auto; max-width: none;
+  translate: -50% 0; pointer-events: none; user-select: none;
+  animation: respira 1.6s steps(2) infinite alternate;
+}
+.l2 .quadro .fig { scale: -1 1; }
+@keyframes respira { to { transform: translateY(-6px); } }
+
+.quadro.entrou .fig { animation: entraL 0.36s steps(5); }
+.l2 .quadro.entrou .fig { animation-name: entraR; }
+@keyframes entraL { from { transform: translateX(-40%); } }
+@keyframes entraR { from { transform: translateX(40%); } }
+
+.tag {
+  position: absolute; top: 1vmin; left: 1vmin; z-index: 3;
+  font-size: 2.4vmin; padding: 0.4vmin 1vmin 0.2vmin;
+  border: 3px solid #000; color: var(--tinta);
+}
+.l1 .tag, .a1 .tag { background: var(--j1); }
+.l2 .tag, .a2 .tag { background: var(--j2); left: auto; right: 1vmin; }
+
+.placa {
+  position: absolute; z-index: 3; left: -8px; bottom: 1.6vmin;
+  padding: 0.8vmin 2.2vmin 0.5vmin 1.6vmin; background: #000;
+  transform: skew(-10deg); border-right: 7px solid var(--papel);
+}
+.l2 .placa {
+  left: auto; right: -8px; transform: skew(10deg);
+  border-right: 0; border-left: 7px solid var(--papel); text-align: right;
+  padding: 0.8vmin 1.6vmin 0.5vmin 2.2vmin;
+}
+.placa .nome {
+  font-family: 'Bangers', Impact, sans-serif; font-weight: 400;
+  font-size: 3.2vmin; line-height: 0.95; color: var(--papel);
+  text-shadow: -2px 0 0 var(--cy), 2px 0 0 var(--mg);
+}
+.placa .meta { font-size: 1.25vmin; color: var(--fc, #fff); letter-spacing: 0.04em; }
+
+/* carimbo PRONTO */
+.trava {
+  position: absolute; z-index: 4; inset: auto 0 38% 0; text-align: center;
+  font-family: 'Bangers', Impact, sans-serif; font-weight: 400; font-size: 5vmin;
+  color: var(--cap); -webkit-text-stroke: 3px #000;
+  text-shadow: 5px 6px 0 #000; opacity: 0; transform: rotate(-9deg);
+}
+.lutador.pronto .trava { opacity: 1; animation: carimbo 0.36s steps(4); }
+.lutador.pronto .quadro { outline: 5px solid var(--cap); outline-offset: -11px; }
+@keyframes carimbo { from { transform: scale(2.4) rotate(-20deg); opacity: 0; } }
+
+.stats {
+  background: var(--papel); color: var(--tinta); border: 4px solid #000;
+  padding: 0.8vmin 1vmin; display: grid; gap: 0.45vmin; box-shadow: 5px 5px 0 #000;
+}
+.linha { display: grid; grid-template-columns: 7em 1fr; align-items: center; font-size: 1.25vmin; }
+.barra { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+.barra i { height: 1.1vmin; border: 2px solid #000; transform: skew(-20deg); background: #e5dcc6; }
+.barra i.on { background: var(--fc, #888); }
+
+/* progresso de confirmacao com o corpo */
+.conf { height: 1.6vmin; border: 3px solid #000; background: #241f28; }
+.conf i { display: block; height: 100%; width: 0%; background: var(--cap); transition: width 0.1s linear; }
+
+.meio { display: flex; flex-direction: column; align-items: center; gap: 1.4vmin; }
+.vsmark { font-size: 8.5vmin; transform: rotate(-8deg); }
+.vez {
+  font-family: 'Bangers', Impact, sans-serif; font-weight: 400; font-size: 2vmin;
+  letter-spacing: 0.08em; white-space: nowrap;
+  text-align: center; padding: 0.6vmin 0.9vmin 0.4vmin; border: 3px solid currentColor; background: #000;
+}
+
+/* na selecao, a legenda de teclas da partida nao aparece */
+body.selecionando #teclas { display: none; }
+
+.roster { display: flex; justify-content: center; padding: 0 2.6vmin; }
+.tile {
+  position: relative; flex: 1 1 0; max-width: 15vmin; aspect-ratio: 0.62;
+  margin: 0 -0.9vmin; border: 0; background: #000;
+  cursor: url('cursores/mao.svg') 14 2, pointer;
+  clip-path: polygon(18% 0, 100% 0, 82% 100%, 0 100%);
+  transition: transform 0.12s steps(2);
+}
+.tile .in {
+  position: absolute; inset: 4px 5px; overflow: hidden; background: var(--fc, #333);
+  clip-path: polygon(18% 0, 100% 0, 82% 100%, 0 100%);
+}
+.tile img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  filter: saturate(0.65) brightness(0.7); transition: filter 0.1s steps(2);
+}
+.tile .n {
+  position: absolute; left: 0; right: 0; bottom: 0.6vmin; text-align: center;
+  font-family: 'Bangers', Impact, sans-serif; font-weight: 400; font-size: 1.6vmin;
+  color: var(--papel); text-shadow: 2px 2px 0 #000, -1px -1px 0 #000;
+}
+.tile.c1 img, .tile.c2 img { filter: none; }
+.tile.c1, .tile.c2 { transform: translateY(-1.2vmin); z-index: 2; }
+.tile.c1 { background: var(--j1); } .tile.c2 { background: var(--j2); }
+.tile.c1.c2 { background: var(--cap); }
+.marca {
+  position: absolute; top: 0.7vmin; z-index: 3;
+  font-family: 'Bangers', Impact, sans-serif; font-weight: 400; font-size: 1.4vmin;
+  padding: 0.2vmin 0.5vmin 0.05vmin; border: 2px solid #000; color: var(--tinta);
+}
+.marca.m1 { left: 22%; background: var(--j1); }
+.marca.m2 { right: 6%; background: var(--j2); }
+
+.dica {
+  padding: 1.2vmin 2vmin 1.6vmin; text-align: center;
+  font: 400 1.4vmin/1.5 'OS', sans-serif; color: #d8d0bd;
+}
+.dica b { color: var(--cap); font-weight: 700; }
+.dica kbd {
+  font: 700 1.15vmin 'OS', sans-serif; background: var(--papel); color: var(--tinta);
+  border: 2px solid #000; padding: 0.15vmin 0.5vmin;
+}
+
+/* ====================================================== TELA: PARTIDA */
+#partida {
+  position: fixed; inset: 0;
+  display: grid; grid-template-rows: auto auto 1fr auto;
+}
+
+.corda-area {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 1.4vmin;
+  align-items: center; padding: 1.2vmin 1.8vmin;
+  background: rgba(10,8,12,0.9); border-bottom: 4px solid #000;
+}
+.avatar { position: relative; width: 11vmin; }
+.avatar .moldura {
+  position: relative; height: 7.4vmin; overflow: hidden;
+  border: 4px solid #000; background: var(--fc, #444); box-shadow: 4px 4px 0 #000;
+}
+.a2 .moldura { box-shadow: -4px 4px 0 #000; }
+.avatar img {
+  position: absolute; bottom: -12%; left: 50%; height: 150%; width: auto; max-width: none;
+  translate: -50% 0;
+}
+.a2 img { scale: -1 1; }
+.avatar .tag { top: 0.3vmin; left: 0.3vmin; font-size: 1.5vmin; padding: 0.15vmin 0.6vmin 0.05vmin; }
+.a2 .tag { left: auto; right: 0.3vmin; }
+.avatar .nome {
+  display: block; margin-top: 0.4vmin; text-align: center;
+  font-family: 'Bangers', Impact, sans-serif; font-weight: 400; font-size: 1.5vmin;
+  color: var(--papel);
+}
+
+#trilho {
+  position: relative; height: 6.6vmin;
+  background: #05060a; border: 4px solid #000;
+  box-shadow: inset 0 0 0 3px #1c1821;
+}
+.zona { position: absolute; top: 0; bottom: 0; width: 9%; }
+.zona-j1 { left: 0;  background: repeating-linear-gradient(45deg, #5c4a10 0 9px, #43360b 9px 18px); }
+.zona-j2 { right: 0; background: repeating-linear-gradient(45deg, #5c1640 9px 18px, #431030 0 9px); }
+#corda {
+  position: absolute; left: 9%; right: 9%; top: 50%; height: 1.5vmin;
+  transform: translateY(-50%);
+  background: repeating-linear-gradient(60deg, #c9a46b 0 7px, #9c7b46 7px 14px);
+  border-top: 2px solid #e3c694; border-bottom: 2px solid #6d5230;
+}
+#meio { position: absolute; left: 50%; top: 6%; bottom: 6%; width: 3px; margin-left: -1.5px; background: #3b3340; }
+#no {
+  position: absolute; left: 50%; top: 7%; bottom: 7%; width: 2.8vmin; margin-left: -1.4vmin;
+  background: var(--mg); border: 3px solid var(--papel);
+  box-shadow: 0 0 2.5vmin rgba(255,45,138,0.6);
+  transform: translateX(var(--pos, 0px));
+  transition: transform 0.55s cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+
+.centro { position: relative; }
+#painel {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 54vmin; padding: 0 0 2.4vmin;
+  background: rgba(10,8,12,0.93); border: 5px solid #000;
+  outline: 3px solid var(--papel); outline-offset: -11px;
+  box-shadow: 9px 9px 0 rgba(0,0,0,0.8);
+  text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.4vmin;
+}
+
+/* faixa de quem e a vez. Fundo chapado na cor do personagem e texto preto ou
+   creme conforme a luminancia: le-se de longe seja qual for o lutador. */
+#p-quem {
+  align-self: stretch; display: flex; align-items: center; gap: 1.2vmin;
+  padding: 0.8vmin 1.6vmin; margin-bottom: 0.6vmin;
+  background: var(--fc, #888); color: var(--fct, #121015);
+  border-bottom: 5px solid #000;
+}
+#p-retrato {
+  width: 7.4vmin; height: 7.4vmin; object-fit: cover; object-position: 50% 38%;
+  border: 3px solid #000; background: rgba(0,0,0,0.25); flex: none;
+}
+#p-tag {
+  font-size: 2.2vmin; padding: 0.3vmin 0.9vmin 0.1vmin;
+  border: 3px solid #000; color: #121015; background: var(--jc, #fff); flex: none;
+}
+#p-nome {
+  font-size: 5.4vmin; line-height: 1; text-align: left; flex: 1;
+  text-shadow: 2px 3px 0 rgba(0,0,0,0.35);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#p-titulo {
+  font-family: 'Bangers', Impact, sans-serif; font-weight: 400; font-size: 4.2vmin;
+  line-height: 1.05; color: var(--papel); text-shadow: 3px 4px 0 #000;
+  padding: 0 1.6vmin;
+}
+#p-contagem { font-size: 11vmin; }
+#p-rotulo { font-size: 1.5vmin; color: var(--cinza); letter-spacing: 0.22em; }
+#p-valor  { font-size: 8.5vmin; }
+#p-dica   { font: 700 1.9vmin/1.35 'OS', sans-serif; color: var(--papel); }
+#alvo { width: 15vmin; height: 16.5vmin; }
+#bloco-sem { display: flex; flex-direction: column; align-items: center; gap: 0.3vmin; }
+/* o painel perdeu o padding lateral por causa da faixa: devolve aos filhos */
+#painel > *:not(#p-quem) { max-width: calc(100% - 3.2vmin); }
+
+/* balao de fala, para a dica do pior membro */
+#p-dica.balao {
+  position: relative; background: #fff; color: var(--tinta);
+  border: 3px solid #000; border-radius: 22px; padding: 0.8vmin 1.4vmin;
+}
+#p-dica.balao::before {
+  content: ""; position: absolute; top: -15px; left: 28px;
+  border: 8px solid transparent; border-bottom: 10px solid #000;
+}
+#p-dica.balao::after {
+  content: ""; position: absolute; top: -8px; left: 31px;
+  border: 6px solid transparent; border-bottom: 8px solid #fff;
+}
+
+.cor-j1 { color: var(--j1); }
+.cor-j2 { color: var(--j2); }
+
+.rodadas {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2vmin;
+  padding: 1.2vmin 1.8vmin 3.4vmin;   /* espaco para a legenda de teclas */
+  background: rgba(10,8,12,0.92); border-top: 4px solid #000;
+}
+.chip {
+  display: flex; align-items: center; gap: 1.1vmin;
+  padding: 0.9vmin 1.2vmin; border: 3px solid #000; background: #1a1620;
+  opacity: 0.5; transform: skew(-7deg);
+}
+.chip > * { transform: skew(7deg); }
+.chip.ativo { background: var(--cap); color: var(--tinta); opacity: 1; box-shadow: 4px 4px 0 #000; }
+.chip-n { font-family: 'Bangers', Impact, sans-serif; font-weight: 400; font-size: 2.4vmin; width: 2.6vmin; }
+.chip-t { font-family: 'Bangers', Impact, sans-serif; font-weight: 400; font-size: 1.7vmin; }
+.chip-s { font: 400 1.25vmin 'OS', sans-serif; margin-top: 0.2vmin; }
+
+#teclas {
+  position: fixed; left: 0; right: 0; bottom: 0.3vmin; text-align: center;
+  font: 400 1.15vmin 'OS', sans-serif; color: #6b6373; pointer-events: none;
+}
+
+/* o no ja usa transform para a posicao: a pulsacao tem de reaplica-la */
+@keyframes pulsaNo {
+  0%, 100% { transform: translateX(var(--pos, 0px)) scale(1); }
+  50%      { transform: translateX(var(--pos, 0px)) scale(1.18); }
+}
+#no.pulsando { animation: pulsaNo 0.6s steps(2) infinite; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+
+/* ====================================================== configuracao de camera */
+#btn-config {
+  font-size: 1.6vmin; letter-spacing: 0.08em;
+  background: var(--papel); color: var(--tinta);
+  border: 3px solid #000; box-shadow: 4px 4px 0 var(--cy);
+  padding: 0.7vmin 1.3vmin 0.45vmin; transform: skew(-8deg);
+  cursor: url('cursores/mao.svg') 14 2, pointer;
+}
+#btn-config:active { transform: skew(-8deg) translate(3px, 3px); box-shadow: 1px 1px 0 var(--cy); }
+
+#config {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: flex-start;
+  padding: 0 0 0 6vmin;
+  background: linear-gradient(90deg, rgba(8,6,10,0.92) 0%, rgba(8,6,10,0.75) 45%, transparent 75%);
+}
+/* enquanto configura, a camera fica clara: e o que se esta olhando */
+body.configurando #video { filter: saturate(0.9) contrast(1.05) !important; }
+
+.cfg-caixa {
+  width: 56vmin; max-height: 86vh; overflow: auto;
+  background: rgba(14,11,18,0.97); border: 5px solid #000;
+  outline: 3px solid var(--papel); outline-offset: -11px;
+  box-shadow: 9px 9px 0 rgba(0,0,0,0.8);
+}
+.cfg-topo {
+  display: flex; align-items: center; justify-content: space-between; gap: 1.4vmin;
+  padding: 1.2vmin 1.8vmin; border-bottom: 5px solid #000; background: rgba(0,0,0,0.35);
+}
+.cfg-topo h2 { font-size: 3vmin; transform: skew(-6deg); }
+#cfg-fechar {
+  font-size: 1.6vmin; letter-spacing: 0.08em;
+  background: var(--cap); color: var(--tinta); border: 3px solid #000;
+  box-shadow: 4px 4px 0 #000; padding: 0.6vmin 1.2vmin 0.4vmin; transform: skew(-8deg);
+  cursor: url('cursores/mao.svg') 14 2, pointer;
+}
+.cfg-corpo { padding: 1.8vmin; }
+.cfg-corpo h3 {
+  font-size: 1.9vmin; letter-spacing: 0.12em; color: var(--cap);
+  margin-bottom: 1.1vmin;
+}
+#cfg-cameras { display: flex; flex-direction: column; gap: 0.9vmin; }
+
+.cam {
+  display: flex; align-items: center; gap: 1.2vmin; width: 100%; text-align: left;
+  padding: 1vmin 1.2vmin; background: #1b1722; color: var(--papel);
+  border: 3px solid #000; font: 700 1.5vmin/1.3 'OS', sans-serif;
+  cursor: url('cursores/mao.svg') 14 2, pointer;
+}
+.cam:hover { background: #262033; }
+.cam.ativa { background: var(--cap); color: var(--tinta); box-shadow: 4px 4px 0 #000; }
+.cam .n {
+  font-family: 'Bangers', Impact, sans-serif; font-weight: 400; font-size: 2.2vmin;
+  width: 3vmin; flex: none; text-align: center;
+  border: 2px solid currentColor; padding: 0.1vmin 0;
+}
+.cam .rot { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.cam .marca {
+  font-family: 'Bangers', Impact, sans-serif; font-weight: 400; font-size: 1.4vmin;
+  letter-spacing: 0.08em; flex: none;
+}
+.cam.ocupada { opacity: 0.55; }
+
+#cfg-info {
+  margin-top: 1.2vmin; font: 400 1.4vmin/1.5 'OS', sans-serif; color: var(--cy);
+  font-variant-numeric: tabular-nums;
+}
+.cfg-pe { margin-top: 1.4vmin; font: 400 1.3vmin/1.5 'OS', sans-serif; color: #8e8678; }
+
+/* ====================================================== avisos de modo */
+#modos {
+  position: fixed; left: 50%; top: 12.5vmin; z-index: 40;
+  transform: translateX(-50%);
+  display: flex; gap: 1.2vmin; pointer-events: none;
+}
+#modos span {
+  font-size: 2vmin; letter-spacing: 0.1em;
+  padding: 0.7vmin 1.4vmin 0.45vmin; border: 4px solid #000;
+  box-shadow: 5px 5px 0 #000; transform: skew(-8deg);
+}
+#m-ensaio { background: var(--cy); color: var(--tinta); }
+#m-pausa  { background: var(--mg); color: var(--papel); animation: pisca 1s steps(2) infinite; }
+@keyframes pisca { 50% { opacity: 0.35; } }
+
+#cfg-modos { display: flex; flex-direction: column; gap: 0.9vmin; }
+.cam.ligado { background: var(--cy); color: var(--tinta); box-shadow: 4px 4px 0 #000; }
+
+/* ====================================================== ajustes de imagem */
+#cfg-controles { display: flex; flex-direction: column; gap: 0.8vmin; }
+.aj {
+  display: grid; grid-template-columns: 11em 1fr auto; gap: 1vmin;
+  align-items: center; font: 700 1.35vmin/1.3 'OS', sans-serif;
+}
+.aj-rot { color: #c9c2b4; }
+.aj-val { color: var(--cy); font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: right; }
+.aj-bs { display: flex; gap: 0.5vmin; flex-wrap: wrap; grid-column: 2 / -1; }
+.aj-b {
+  font: 700 1.3vmin 'OS', sans-serif; padding: 0.45vmin 0.9vmin;
+  background: #1b1722; color: var(--papel); border: 2px solid #000;
+  cursor: url('cursores/mao.svg') 14 2, pointer;
+}
+.aj-b:hover { background: #262033; }
+.aj-b.on { background: var(--cy); color: var(--tinta); }
+#aj-reset { margin-top: 0.8vmin; justify-self: start; background: var(--papel); color: var(--tinta); }
+
+.aj input[type=range] {
+  -webkit-appearance: none; appearance: none; height: 1.5vmin;
+  background: #241f28; border: 2px solid #000; cursor: url('cursores/mao.svg') 14 2, pointer;
+}
+.aj input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 1.6vmin; height: 2.4vmin; background: var(--cap);
+  border: 2px solid #000; box-shadow: 2px 2px 0 #000;
+}
+
+/* ====================================================== cartaz de HQ */
+#cartaz {
+  position: fixed; inset: 0; z-index: 60; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+#cartaz .cz-fundo { position: absolute; inset: 0; background: var(--cz, #00e5ff); opacity: 0; }
+#cartaz .cz-raios {
+  position: absolute; left: 50%; top: 50%; width: 220%; aspect-ratio: 1;
+  translate: -50% -50%; opacity: 0;
+  background: repeating-conic-gradient(#0000 0 5deg, #00000026 5deg 10deg);
+  animation: girar 18s steps(40) infinite;
+}
+#cartaz.cheio .cz-fundo { opacity: 0.93; animation: czEntra 0.16s steps(2); }
+#cartaz.cheio .cz-raios { opacity: 1; }
+@keyframes czEntra { from { opacity: 0; } }
+
+.cz-faixa {
+  position: relative; width: 118%;
+  display: flex; align-items: center; justify-content: center; gap: 2.6vmin;
+  padding: 1.6vmin 4vmin;
+  background: var(--cz, #00e5ff);
+  border-top: 6px solid #000; border-bottom: 6px solid #000;
+  box-shadow: 0 1.2vmin 0 rgba(0, 0, 0, 0.55);
+  transform: skew(-9deg);
+  animation: czFaixa 0.24s cubic-bezier(0.2, 1.7, 0.4, 1) both;
+}
+@keyframes czFaixa { from { transform: skew(-9deg) scaleY(0.04); } }
+
+#cz-retrato {
+  width: 15vmin; height: 15vmin; object-fit: cover; object-position: 50% 34%;
+  border: 5px solid #000; background: rgba(0, 0, 0, 0.25);
+  transform: skew(9deg);
+  animation: czRetrato 0.34s steps(4) both;
+}
+@keyframes czRetrato { from { transform: skew(9deg) translateX(-40%); opacity: 0; } }
+
+.cz-txt { transform: skew(9deg); text-align: left; }
+#cz-texto {
+  font-size: 9vmin; line-height: 0.95; color: var(--papel);
+  -webkit-text-stroke: 0.03em #000; paint-order: stroke fill;
+  text-shadow: 0.05em 0.06em 0 #000;
+  animation: czSlam 0.28s steps(5) both;
+}
+#cz-sub {
+  font-size: 3vmin; letter-spacing: 0.12em; color: #121015; margin-top: 0.4vmin;
+  animation: czSlam 0.28s 0.07s steps(5) both;
+}
+@keyframes czSlam { from { transform: scale(2.8) rotate(-7deg); opacity: 0; } }

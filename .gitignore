@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Saídas geradas
+banner/Banner_Cabo_de_Guerra_Neural.pdf
+captura_*.png
+*.log
+
+# Sistema
+Thumbs.db
+desktop.ini
+.DS_Store

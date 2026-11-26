@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs>
+    <g id="f">
+      <path d="M3 2 L3 24 L9.5 17.8 L13.6 27 L18 25 L14 16.2 L22.4 16.2 Z"/>
+    </g>
+  </defs>
+  <use href="#f" fill="#000" stroke="#000" stroke-width="4.6" stroke-linejoin="round" opacity=".45" transform="translate(2,2)"/>
+  <use href="#f" fill="#121015" stroke="#121015" stroke-width="4.6" stroke-linejoin="round"/>
+  <use href="#f" fill="#fff8e7"/>
+</svg>

@@ -1,0 +1,6 @@
+# Instale com:  py -3.12 -m pip install -r requirements.txt
+ultralytics>=8.3        # YOLO11-Pose (traz torch e opencv junto)
+fastapi>=0.110          # servidor HTTP + WebSocket
+uvicorn[standard]>=0.29 # roda o FastAPI
+reportlab>=4.0          # só para gerar o PDF do banner
+pypdf>=4.0              # idem

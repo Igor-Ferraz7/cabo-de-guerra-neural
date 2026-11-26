@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cabo de Guerra Neural</title>
+<link rel="stylesheet" href="estilo.css?v=2">
+</head>
+<body class="selecionando">
+
+<!-- ================================================= camera, atras de tudo -->
+<div id="palco">
+  <video id="video" autoplay muted playsinline></video>
+  <!-- a textura fica ENTRE o video e o canvas: se ficar por cima, a reticula
+       picota o esqueleto, que e justamente o que precisa estar nitido -->
+  <div id="textura"></div>
+  <canvas id="esqueletos"></canvas>
+</div>
+
+<div id="modos">
+  <span id="m-ensaio" class="bangers escondido">MODO ENSAIO</span>
+  <span id="m-pausa" class="bangers escondido">PAUSA</span>
+</div>
+
+<!-- cartaz de HQ: entra batendo, some sozinho -->
+<div id="cartaz" class="escondido">
+  <div class="cz-fundo"></div>
+  <div class="cz-raios"></div>
+  <div class="cz-faixa">
+    <img id="cz-retrato" alt="">
+    <div class="cz-txt">
+      <div id="cz-texto" class="bangers"></div>
+      <div id="cz-sub" class="bangers"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================= TELA 1: selecao -->
+<section id="selecao">
+
+  <header class="faixa">
+    <h1 class="logo bangers grito">CABO DE GUERRA NEURAL</h1>
+    <div class="sub bangers">ESCOLHA SEU LUTADOR</div>
+    <button id="btn-config" class="bangers">C&Acirc;MERA</button>
+    <div id="sel-aviso"></div>
+  </header>
+
+  <div class="arena">
+    <section class="lutador l1" id="sel1">
+      <div class="quadro">
+        <div class="raios"></div>
+        <img class="fig" alt="">
+        <div class="retic"></div>
+        <span class="tag bangers">1P</span>
+        <div class="placa"><h2 class="nome"></h2><div class="meta"></div></div>
+        <div class="trava">PRONTO!</div>
+      </div>
+      <div class="stats"></div>
+      <div class="conf"><i></i></div>
+    </section>
+
+    <div class="meio">
+      <div class="vsmark bangers grito">VS</div>
+      <div class="vez" id="vez"></div>
+    </div>
+
+    <section class="lutador l2" id="sel2">
+      <div class="quadro">
+        <div class="raios"></div>
+        <img class="fig" alt="">
+        <div class="retic"></div>
+        <span class="tag bangers">2P</span>
+        <div class="placa"><h2 class="nome"></h2><div class="meta"></div></div>
+        <div class="trava">PRONTO!</div>
+      </div>
+      <div class="stats"></div>
+      <div class="conf"><i></i></div>
+    </section>
+  </div>
+
+  <nav class="roster" id="roster"></nav>
+
+  <p class="dica" id="dica-sel">
+    Levante <b>um bra&ccedil;o</b> para trocar de lutador &middot;
+    levante <b>os dois</b> e segure para confirmar.
+    <br>No teclado: <kbd>A</kbd><kbd>D</kbd><kbd>F</kbd> para o 1P &middot;
+    <kbd>&larr;</kbd><kbd>&rarr;</kbd><kbd>Enter</kbd> para o 2P &middot;
+    <kbd>R</kbd> sorteia e come&ccedil;a &middot; <kbd>T</kbd> tela cheia
+  </p>
+
+</section>
+
+<!-- ================================================= TELA 2: partida -->
+<section id="partida" class="escondido">
+
+  <header class="faixa">
+    <h1 class="logo mini bangers grito">CABO DE GUERRA NEURAL</h1>
+    <div class="pill bangers">RODADA 2 &middot; ESPELHO</div>
+    <div class="diag">
+      <span id="fps">--</span> FPS <span class="sep">&middot;</span>
+      <span id="lat">--</span> ms <span class="sep">&middot;</span>
+      <span id="modelo">yolo</span>
+    </div>
+  </header>
+
+  <div class="corda-area">
+    <div class="avatar a1" id="av1">
+      <div class="moldura"><div class="raios"></div><img alt=""><span class="tag bangers">1P</span></div>
+      <span class="nome"></span>
+    </div>
+
+    <div id="trilho">
+      <div class="zona zona-j1"></div>
+      <div class="zona zona-j2"></div>
+      <div id="corda"></div>
+      <div id="meio"></div>
+      <div id="no"></div>
+    </div>
+
+    <div class="avatar a2" id="av2">
+      <div class="moldura"><div class="raios"></div><img alt=""><span class="tag bangers">2P</span></div>
+      <span class="nome"></span>
+    </div>
+  </div>
+
+  <div class="centro">
+    <div id="painel">
+      <!-- faixa de quem e a vez: retrato + 1P/2P + nome, na cor do personagem -->
+      <div id="p-quem">
+        <img id="p-retrato" alt="">
+        <span id="p-tag" class="bangers"></span>
+        <span id="p-nome" class="bangers"></span>
+      </div>
+      <div id="p-titulo"></div>
+      <canvas id="alvo" width="200" height="220"></canvas>
+      <div id="p-contagem" class="bangers grito"></div>
+      <div id="bloco-sem">
+        <div id="p-rotulo">SEMELHAN&Ccedil;A</div>
+        <div id="p-valor" class="bangers grito"></div>
+      </div>
+      <div id="p-dica"></div>
+    </div>
+  </div>
+
+  <footer class="rodadas">
+    <div class="chip">
+      <div class="chip-n">1</div>
+      <div><div class="chip-t">FAROESTE</div><div class="chip-s">rea&ccedil;&atilde;o ao sinal</div></div>
+    </div>
+    <div class="chip ativo">
+      <div class="chip-n">2</div>
+      <div><div class="chip-t">ESPELHO</div><div class="chip-s">agora</div></div>
+    </div>
+    <div class="chip">
+      <div class="chip-n">3</div>
+      <div><div class="chip-t">POLICHINELO</div><div class="chip-s">final &middot; vale o dobro</div></div>
+    </div>
+  </footer>
+
+</section>
+
+<!-- ================================================= configuracao -->
+<section id="config" class="escondido">
+  <div class="cfg-caixa">
+    <header class="cfg-topo">
+      <h2 class="bangers grito">CONFIGURA&Ccedil;&Atilde;O</h2>
+      <button id="cfg-fechar" class="bangers">FECHAR</button>
+    </header>
+    <div class="cfg-corpo">
+      <h3 class="bangers">C&Acirc;MERA</h3>
+      <div id="cfg-cameras"></div>
+      <p id="cfg-info"></p>
+      <p class="cfg-pe">
+        A escolha fica gravada neste navegador e volta sozinha na pr&oacute;xima vez.
+        Se a c&acirc;mera for desligada, o jogo cai na padr&atilde;o.
+      </p>
+
+      <h3 class="bangers" style="margin-top:2.2vmin">IMAGEM</h3>
+      <div id="cfg-controles"></div>
+      <p class="cfg-pe" id="cfg-caps"></p>
+
+      <h3 class="bangers" style="margin-top:2.2vmin">ENSAIO SOZINHO</h3>
+      <div id="cfg-modos">
+        <button id="cfg-solo" class="cam">
+          <span class="n">E</span>
+          <span class="rot">Jogar sozinho, contra voc&ecirc; mesmo</span>
+          <span class="marca"></span>
+        </button>
+        <button id="cfg-pausa" class="cam">
+          <span class="n">P</span>
+          <span class="rot">Pausar a rodada onde est&aacute;</span>
+          <span class="marca"></span>
+        </button>
+      </div>
+      <p class="cfg-pe">
+        No ensaio, a sua pose &eacute; fotografada no fim da etapa <b>segure a pose</b> e
+        voc&ecirc; tem de reproduzi-la na etapa <b>copie a pose</b>. Segurou parado, nota
+        alta; mexeu, cai. D&aacute; para percorrer a rodada inteira sem segunda pessoa.
+        <b>Desligue antes da feira.</b>
+      </p>
+    </div>
+  </div>
+</section>
+
+<div id="teclas">ESPA&Ccedil;O recome&ccedil;a &middot; ESC sele&ccedil;&atilde;o &middot; E ensaio sozinho &middot; P pausa &middot; C c&acirc;mera &middot; T tela cheia</div>
+
+<script src="app.js?v=2"></script>
+</body>
+</html>
