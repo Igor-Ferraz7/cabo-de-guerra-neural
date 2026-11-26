@@ -126,8 +126,14 @@ class Jogo:
     LIMITE = 4          # passos até a ponta da corda
     TURNOS_ESPELHO = 2  # uma pose para cada jogador
 
-    # ordem das rodadas. O Polichinelo entra aqui quando existir.
-    ORDEM = ["faroeste", "espelho"]
+    ORDEM = ["faroeste", "espelho", "polichinelo"]
+
+    T_TUTORIAL = 8.0           # instruções antes de cada rodada
+
+    # Polichinelo
+    T_POLI_PREPARA = 3.0
+    T_POLI = 10.0
+    CONF_POLI = 0.75
 
     # Faroeste
     T_FAR_PREPARA = 3.0        # "fiquem de braços baixos"
@@ -169,7 +175,15 @@ class Jogo:
         self.ultima_rodada = None  # {"vencedor", "passos", ...}
         self.vencedor = None       # quem ganhou a partida (None = empate)
         self.classificador = classificador_padrao()
+        # o tutorial volta ligado a cada partida nova, mesmo que tenha sido
+        # desligado na anterior: quem chega na feira nunca viu o jogo
+        self.tutorial = True
         self._zerar_faroeste()
+        self._zerar_polichinelo()
+
+    def _zerar_polichinelo(self):
+        self.polichinelos = [0, 0]
+        self.fase_poli = ["baixo", "baixo"]
 
     def _zerar_faroeste(self):
         self.espera_sinal = random.uniform(*self.FAR_ESPERA)
@@ -192,9 +206,12 @@ class Jogo:
         return {"prepara": self.T_PREPARA, "pose": self.T_POSE,
                 "copia": self.T_COPIA, "resultado": self.T_RESULT,
                 "fim_rodada": self.T_RODADA,
+                "tutorial": self.T_TUTORIAL,
                 "far_prepara": self.T_FAR_PREPARA,
                 "far_espera": self.espera_sinal,
-                "far_sinal": self.T_FAR_LIMITE}.get(self.estado)
+                "far_sinal": self.T_FAR_LIMITE,
+                "poli_prepara": self.T_POLI_PREPARA,
+                "poli": self.T_POLI}.get(self.estado)
 
     @property
     def janela_empate(self):
@@ -227,8 +244,15 @@ class Jogo:
                 self.intervalo_ms = 0.8 * self.intervalo_ms + 0.2 * (ts - self._ts_ant)
             self._ts_ant = ts
 
+        if e == "tutorial":
+            if self.restante(self.T_TUTORIAL) == 0:
+                self._abrir_rodada()
+            return
         if e.startswith("far_"):
             self._faroeste(jogadores, ts)
+            return
+        if e.startswith("poli"):
+            self._polichinelo(jogadores)
             return
         lider, copia = jogadores[self.lider], jogadores[1 - self.lider]
         if e == "prepara" and self.restante(self.T_PREPARA) == 0:
@@ -344,6 +368,31 @@ class Jogo:
             "janela": round(self.janela_empate),
         })
 
+    # ------------------------------------------------------------ Polichinelo
+    def _polichinelo(self, jogadores):
+        if self.estado == "poli_prepara":
+            if self.restante(self.T_POLI_PREPARA) == 0:
+                self.ir("poli")
+            return
+
+        for i in (0, 1):
+            classe, conf = self.classificador.prever(jogadores[i]["kp"], jogadores[i]["cf"])
+            if conf < self.CONF_POLI:
+                continue
+            # "Y" entra junto com "braços abertos" porque no meio do salto as
+            # pernas aparecem de qualquer jeito, e o que separa as duas classes
+            # é exatamente a perna. O braço no alto é o sinal confiável aqui.
+            if classe in ("bracos_abertos", "Y") and self.fase_poli[i] == "baixo":
+                self.fase_poli[i] = "alto"
+            elif classe == "neutra" and self.fase_poli[i] == "alto":
+                self.fase_poli[i] = "baixo"
+                self.polichinelos[i] += 1   # só conta o ciclo fechado
+
+        if self.restante(self.T_POLI) == 0:
+            a, b = self.polichinelos
+            venc = None if a == b else (0 if a > b else 1)
+            self._aplicar_rodada(venc, {"polichinelos": list(self.polichinelos)})
+
     # ------------------------------------------------------------ Espelho
     def pontuar(self):
         """Pontos do TURNO. A corda não anda aqui — anda no fim da rodada."""
@@ -391,10 +440,19 @@ class Jogo:
         self.melhor_rodada = [0.0, 0.0]
         if nome == "faroeste":
             self._zerar_faroeste()
-            self.ir("far_prepara")
+        elif nome == "polichinelo":
+            self._zerar_polichinelo()
         else:
             self.lider = 0
-            self.ir("prepara")
+        self.ir("tutorial" if self.tutorial else self._primeiro_estado())
+
+    def _primeiro_estado(self):
+        return {"faroeste": "far_prepara", "espelho": "prepara",
+                "polichinelo": "poli_prepara"}[self.rodada]
+
+    def _abrir_rodada(self):
+        """Sai do tutorial e começa a rodada de fato."""
+        self.ir(self._primeiro_estado())
 
     def proxima_rodada(self):
         i = self.ORDEM.index(self.rodada)
@@ -517,6 +575,11 @@ def criar_app(args):
                     if acao == "comecar":
                         jogo.reset()
                         jogo.iniciar_rodada(Jogo.ORDEM[0])
+                    elif acao == "tutorial":
+                        jogo.tutorial = bool(cmd.get("ligado"))
+                        # desligou com o tutorial na tela: pula na hora
+                        if not jogo.tutorial and jogo.estado == "tutorial":
+                            jogo._abrir_rodada()
                     elif acao == "sinal_visto":
                         # o navegador avisa QUANDO desenhou o sinal, no relógio
                         # dele. É desse instante que a reação é medida, e é o
@@ -635,6 +698,8 @@ def criar_app(args):
                         "reacao": list(jogo.reacao),
                         "queimou": list(jogo.queimou),
                         "janela": round(jogo.janela_empate),
+                        "polichinelos": list(jogo.polichinelos),
+                        "tutorial": jogo.tutorial,
                         "msg": jogo.msg_result,
                         "alvo": (pose_para_json(jogo.alvo[0], jogo.alvo[1], W, H)
                                  if jogo.alvo is not None else None),

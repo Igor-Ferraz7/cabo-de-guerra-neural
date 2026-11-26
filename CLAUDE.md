@@ -51,8 +51,7 @@ Jogo interativo em que **duas pessoas disputam um cabo de guerra virtual usando 
 | Protótipo visual da interface (canvas no Claude) | https://claude.ai/artifact/Ct45KeyeMvgjkrx6hZh317 (pode ser exportado como imagem para a Figura 2 no plano B) |
 | Comparação das ideias finalistas (doc) | https://claude.ai/artifact/QCiDxEynh2zNtQJpXP5VeZ |
 | Rede de poses (MLP) | **Não começou.** A interface já existe (`jogo/poses.py`) e a regra geométrica ocupa o lugar dela. |
-| Rodada **Faroeste** | Implementada e validada com bots. Depende da MLP só para trocar a regra geométrica pelo classificador treinado. |
-| Rodada **Polichinelo** | **Não começou.** |
+| Rodadas **Faroeste** e **Polichinelo** | Implementadas e validadas com bots. Depende da MLP só para trocar a regra geométrica pelo classificador treinado. |
 
 ## Estrutura da pasta
 
@@ -301,7 +300,19 @@ O sinal (`#sinal`) **não tem animação de entrada**, de propósito: tem de apa
 
 Medido com bots (60 partidas, reflexos 320 ms × 520 ms, 10% de chance de queimar): Bot-A leva o Faroeste 52 a 8, **zero empates falsos**, queimadas em 11 partidas, reação medida com mediana de 500 ms. As partidas completas (Faroeste + Espelho) levam **61 s**.
 
-**Polichinelo (B3):** contar a transição braços abertos → neutra validada pela rede, em 10 s. Cada repetição certa vale 2 passos (rodada final).
+**Polichinelo — implementado em 26/11.** Estados `poli_prepara` (3 s) → `poli` (10 s) → `fim_rodada`. Conta a transição **braços no alto → braços embaixo**, fechando o ciclo; quem fizer mais leva a rodada, que vale 2 passos.
+
+- Aceita **`bracos_abertos` e `Y`** como "alto". O que separa essas duas classes é a perna, e no meio do salto a perna aparece de qualquer jeito: o braço no alto é o sinal confiável aqui.
+- A própria máquina de fases é o antirruído — não dá para contar duas vezes sem passar pela outra fase —, então basta confiança ≥ 0,75, sem exigir quadros seguidos. Isso importa: a 9 FPS, uma fase de polichinelo rápido dura só 2 quadros.
+- Medido com bots de ritmo 1,6 e 1,1 por segundo em 10 s: contou **16 e 11**, exato.
+
+**Tutorial por rodada.** Estado `tutorial` (8 s) antes de cada rodada, com texto e figura.
+
+- **Volta ligado a cada partida nova**, mesmo se tiver sido desligado na anterior — quem chega na feira nunca viu o jogo. O servidor é dono do estado e o reinicia em `reset()`.
+- Tecla `I` ou botão no painel `C`. Desligar com o tutorial na tela pula na hora.
+- As figuras são **geradas** por `jogo/figuras_tutorial.py` a partir das mesmas poses de `bot.POSES` que o classificador reconhece. Desenhar à mão arriscaria ensinar uma pose que o jogo não aceita mais; assim basta rodar o script de novo.
+
+**Partida completa:** 79 s sem tutorial, ~103 s com os três. Mais a seleção de lutador, fica perto do limite de 2 minutos por visitante — que é exatamente o motivo de o tutorial poder ser desligado para quem já jogou.
 
 ## Referências usadas no banner
 

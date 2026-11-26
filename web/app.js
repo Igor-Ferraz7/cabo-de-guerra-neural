@@ -211,6 +211,10 @@ function conectar() {
         ws.send(JSON.stringify({ acao: 'lat', ms: recebidoEm - dados.ts }));
       }
     }
+    if (typeof dados.jogo.tutorial === 'boolean'
+        && dados.jogo.tutorial !== tutorialLigado) {
+      tutorialLigado = dados.jogo.tutorial; pintarModos();
+    }
     if (typeof dados.solo === 'boolean' &&
         (dados.solo !== modoSolo || dados.pausado !== modoPausa)) {
       modoSolo = dados.solo; modoPausa = dados.pausado; pintarModos();
@@ -226,6 +230,9 @@ function enviarAcao(acao) {
 // ------------------------------------------------------------- modos de ensaio
 let modoSolo = false, modoPausa = false;
 let gravando = false;
+// declarado aqui junto dos outros modos: pintarModos() roda no carregamento e
+// lê esta variável, então declarar lá embaixo deixava tudo em zona morta
+let tutorialLigado = true;
 let latEnviadaEm = 0;
 
 // ajustes de imagem do lado do navegador
@@ -238,7 +245,8 @@ function pintarModos() {
   $('#m-gravando').classList.toggle('escondido', !gravando);
   $('#cfg-registrar').classList.toggle('gravando', gravando);
   $('#cfg-registrar').querySelector('.marca').textContent = gravando ? 'GRAVANDO' : '';
-  for (const [sel, lig] of [['#cfg-solo', modoSolo], ['#cfg-pausa', modoPausa]]) {
+  for (const [sel, lig] of [['#cfg-solo', modoSolo], ['#cfg-pausa', modoPausa],
+                            ['#cfg-tutorial', tutorialLigado]]) {
     const b = $(sel);
     b.classList.toggle('ligado', lig);
     b.querySelector('.marca').textContent = lig ? 'LIGADO' : '';
@@ -275,6 +283,7 @@ function alternarRegistro(v) {
 }
 
 $('#cfg-registrar').addEventListener('click', () => alternarRegistro());
+$('#cfg-tutorial').addEventListener('click', () => alternarTutorial());
 $('#cfg-solo').addEventListener('click', () => alternarSolo());
 $('#cfg-pausa').addEventListener('click', () => alternarPausa());
 pintarModos();
@@ -661,6 +670,7 @@ function atualizarHUD() {
   const restante = g.restante === null ? null
       : Math.max(0, g.restante - (performance.now() - recebidoEm) / 1000);
 
+  mostrarTutorial(g, restante);
   let quem = null, titulo = '', contagem = '', valor = '', dica = '', rotulo = 'SEMELHANÇA';
   let verAlvo = false, verContagem = false, verSem = false, balao = false;
   let corValor = '', corContagem = '';
@@ -668,6 +678,17 @@ function atualizarHUD() {
   if (n < 2) {
     titulo = 'AGUARDANDO OS DOIS';
     dica = 'fiquem nas marcas do chão, de corpo inteiro';
+  } else if (g.estado === 'tutorial') {
+    titulo = '';
+  } else if (g.estado === 'poli_prepara') {
+    titulo = 'PREPARAR!';
+    dica = 'braços embaixo';
+    contagem = Math.ceil(restante); verContagem = true;
+  } else if (g.estado === 'poli') {
+    titulo = 'POLICHINELO!';
+    verSem = true; rotulo = 'POLICHINELOS';
+    valor = (g.polichinelos || [0, 0]).join(' — ');
+    dica = `${Math.ceil(restante)} s`;
   } else if (g.estado === 'far_prepara') {
     titulo = 'FAROESTE';
     dica = 'braços para baixo · ao sinal, mãos na cintura';
@@ -711,8 +732,11 @@ function atualizarHUD() {
     const faroeste = r.rodada === 'faroeste';
     titulo = quem === null ? 'RODADA EMPATADA' : 'LEVA A RODADA!';
     verSem = true;
-    rotulo = faroeste ? 'TEMPO DE REAÇÃO' : 'PONTOS DA RODADA';
-    valor = faroeste ? '' : (g.pontos || [0, 0]).join(' — ');
+    const poli = r.rodada === 'polichinelo';
+    rotulo = faroeste ? 'TEMPO DE REAÇÃO'
+           : poli ? 'POLICHINELOS' : 'PONTOS DA RODADA';
+    valor = faroeste ? ''
+          : (poli ? (r.polichinelos || [0, 0]) : (g.pontos || [0, 0])).join(' — ');
     corValor = quem === null ? '' : classeDe(quem);
     dica = faroeste ? textoFaroeste(g)
          : (quem === null ? 'a corda não anda' : `a corda anda ${r.passos} para o lado dele`);
@@ -787,6 +811,7 @@ document.addEventListener('keydown', (e) => {
   if (k === 'e') { alternarSolo(); return; }
   if (k === 'p') { alternarPausa(); return; }
   if (k === 'l') { alternarRegistro(); return; }
+  if (k === 'i') { alternarTutorial(); return; }
   if (!elConfig.classList.contains('escondido')) {
     if (e.key === 'Escape') abrirConfig(false);
     return;                      // com a configuracao aberta, nada mais responde
@@ -978,6 +1003,53 @@ const RODADAS = {
 const elSinal = $('#sinal');
 let sinalMostrado = false;
 
+/* Instruções de cada rodada. As figuras são geradas por
+   jogo/figuras_tutorial.py a partir das mesmas poses que o classificador
+   reconhece — desenhar à mão arriscaria ensinar uma pose que o jogo não
+   aceita mais. */
+const TUTORIAIS = {
+  faroeste: {
+    img: 'img/tutorial/faroeste.svg',
+    texto: 'Fiquem de <b>braços para baixo</b> e esperem. Quando a tela gritar '
+         + '<b>SAQUE!</b>, levem as duas mãos à cintura, cotovelos para fora. '
+         + 'Quem fizer primeiro leva a rodada. Sacar <b>antes</b> do sinal '
+         + 'entrega a rodada ao adversário.',
+  },
+  espelho: {
+    img: 'img/tutorial/espelho.svg',
+    texto: 'Um jogador faz uma pose e <b>segura</b>. O outro tem alguns segundos '
+         + 'para copiar. Quanto mais parecida, mais pontos. Depois os papéis '
+         + 'trocam: são <b>dois turnos</b>, um para cada.',
+  },
+  polichinelo: {
+    img: 'img/tutorial/polichinelo.svg',
+    texto: '<b>Dez segundos.</b> Façam o máximo de polichinelos que conseguirem: '
+         + 'braços acima da cabeça e de volta para baixo. Quem fizer mais leva a '
+         + 'rodada — e esta <b>vale o dobro</b>.',
+  },
+};
+const elTutorial = $('#tutorial');
+
+function mostrarTutorial(g, restante) {
+  const ver = g.estado === 'tutorial';
+  elTutorial.classList.toggle('escondido', !ver);
+  if (!ver) return;
+  const r = RODADAS[g.rodada] || RODADAS.espelho;
+  const t = TUTORIAIS[g.rodada] || TUTORIAIS.espelho;
+  $('#tut-n').textContent = r.n;
+  $('#tut-titulo').textContent = r.nome;
+  $('#tut-tempo').textContent = restante === null ? '' : Math.ceil(restante) + ' s';
+  const img = $('#tut-img');
+  if (!img.src.endsWith(t.img)) img.src = t.img;
+  $('#tut-texto').innerHTML = t.texto;
+}
+
+function alternarTutorial(v) {
+  tutorialLigado = (v === undefined) ? !tutorialLigado : v;
+  mandarModo('tutorial', tutorialLigado);
+  pintarModos();
+}
+
 /* O sinal aparece e, no mesmo instante, o navegador avisa o servidor em que
    momento do relógio DELE isso aconteceu. É desse carimbo que a reação é
    medida, e é o mesmo relógio que carimba cada quadro da câmera — então os
@@ -1036,6 +1108,7 @@ function cartaz(op) {
 
 function limparCartaz() {
   mostrarSinal(false);
+  elTutorial.classList.add('escondido');
   clearTimeout(czTimer); clearTimeout(czFila);
   elCartaz.classList.add('escondido');
 }

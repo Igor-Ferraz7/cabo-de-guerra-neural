@@ -116,11 +116,13 @@ class Bot:
     `reacao_ms`: usado pelo Faroeste quando ele existir.
     """
 
-    def __init__(self, nome, precisao=0.8, reacao_ms=350, prob_queima=0.10, rng=None):
+    def __init__(self, nome, precisao=0.8, reacao_ms=350, prob_queima=0.10,
+                 ritmo_poli=1.5, rng=None):
         self.nome = nome
         self.precisao = max(0.0, min(1.0, precisao))
         self.reacao_ms = reacao_ms
         self.prob_queima = prob_queima     # chance de sacar antes do sinal
+        self.ritmo_poli = ritmo_poli       # polichinelos por segundo
         self.rng = rng or random.Random()
 
     @property
@@ -156,6 +158,7 @@ def simular_partida(bots, jogo_mod, rng, registrador=None, narrar=False,
     jogo_mod.time = rel
     jogo = jogo_mod.Jogo()
     jogo.reset()
+    jogo.tutorial = False        # bot não lê instrução
     jogo.iniciar_rodada(jogo_mod.Jogo.ORDEM[0])
 
     L, A = 480, 270
@@ -167,6 +170,7 @@ def simular_partida(bots, jogo_mod, rng, registrador=None, narrar=False,
     estado_ant = jogo.estado
     ts = 50000.0                 # relógio do "navegador", em ms
     queima_em = [None, None]     # instante em que cada bot queima a largada
+    t0_poli = 0.0                # instante em que o Polichinelo começou
     far = None
 
     while jogo.estado != "fim" and rel.t - 1000.0 < limite_s:
@@ -187,6 +191,12 @@ def simular_partida(bots, jogo_mod, rng, registrador=None, narrar=False,
             elif (est == "far_sinal" and jogo.ts_sinal is not None
                   and ts - jogo.ts_sinal >= bots[i].reacao_ms):
                 kp, cf = bots[i].posar("saque", centros[i], tronco)
+            elif est == "poli":
+                # alterna alto/baixo no ritmo do bot
+                meio = 500.0 / max(0.1, bots[i].ritmo_poli)
+                alto = int((ts - t0_poli) / meio) % 2 == 0
+                kp, cf = bots[i].posar("bracos_abertos" if alto else "neutra",
+                                       centros[i], tronco)
             else:
                 kp, cf = bots[i].posar("neutra", centros[i], tronco)
             jogadores.append(dict(box=np.array([centros[i][0] - 60, 20,
@@ -213,10 +223,21 @@ def simular_partida(bots, jogo_mod, rng, registrador=None, narrar=False,
             )
 
         if jogo.estado != estado_ant:
+            if jogo.estado == "poli":
+                t0_poli = ts
             if jogo.estado == "far_espera":
                 for i in (0, 1):
                     queima_em[i] = (ts + rng.uniform(300, jogo.espera_sinal * 1000)
                                     if rng.random() < bots[i].prob_queima else None)
+            if (jogo.estado == "fim_rodada"
+                    and (jogo.ultima_rodada or {}).get("rodada") == "polichinelo"):
+                r = jogo.ultima_rodada
+                poli = list(r.get("polichinelos") or [])
+                if narrar:
+                    quem = ("empate" if r.get("vencedor") is None
+                            else bots[r["vencedor"]].nome)
+                    print(f"  polichinelo: {bots[0].nome} {poli[0]} · "
+                          f"{bots[1].nome} {poli[1]} -> {quem}")
             if (jogo.estado == "fim_rodada"
                     and (jogo.ultima_rodada or {}).get("rodada") == "faroeste"):
                 r = jogo.ultima_rodada
@@ -321,6 +342,10 @@ def main():
     ap.add_argument("--reacao-b", type=float, default=520, help="ms de reflexo do Bot-B")
     ap.add_argument("--queima", type=float, default=0.10,
                     help="chance de cada bot queimar a largada")
+    ap.add_argument("--ritmo-a", type=float, default=1.6,
+                    help="polichinelos por segundo do Bot-A")
+    ap.add_argument("--ritmo-b", type=float, default=1.1,
+                    help="polichinelos por segundo do Bot-B")
     ap.add_argument("--classificador", action="store_true",
                     help="só confere o classificador de poses")
     ap.add_argument("--registrar", action="store_true",
@@ -335,9 +360,9 @@ def main():
     import servidor as jogo_mod     # traz a classe Jogo e a semelhança
 
     bots = [Bot("Bot-A", args.precisao_a, args.reacao_a, args.queima,
-                random.Random(args.semente)),
+                args.ritmo_a, random.Random(args.semente)),
             Bot("Bot-B", args.precisao_b, args.reacao_b, args.queima,
-                random.Random(args.semente + 1))]
+                args.ritmo_b, random.Random(args.semente + 1))]
     reg = Registrador("simulado", f"bots-{args.partidas}-partidas", meta={
         "classificador": P.classificador_padrao().nome,
         "precisão Bot-A": args.precisao_a, "precisão Bot-B": args.precisao_b,

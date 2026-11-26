@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="320" viewBox="0 0 400 320">
+  <polygon points="161.5,40.0 238.5,40.0 224.2,150.0 175.8,150.0" fill="#f5c542" fill-opacity="0.22"/>
+  <line x1="161.5" y1="40.0" x2="238.5" y2="40.0" stroke="#121015" stroke-width="18.7" stroke-linecap="round"/>
+  <line x1="161.5" y1="40.0" x2="124.3" y2="87.7" stroke="#121015" stroke-width="18.7" stroke-linecap="round"/>
+  <line x1="124.3" y1="87.7" x2="177.1" y2="102.8" stroke="#121015" stroke-width="18.7" stroke-linecap="round"/>
+  <line x1="238.5" y1="40.0" x2="275.7" y2="87.7" stroke="#121015" stroke-width="18.7" stroke-linecap="round"/>
+  <line x1="275.7" y1="87.7" x2="222.9" y2="102.8" stroke="#121015" stroke-width="18.7" stroke-linecap="round"/>
+  <line x1="161.5" y1="40.0" x2="175.8" y2="150.0" stroke="#121015" stroke-width="18.7" stroke-linecap="round"/>
+  <line x1="238.5" y1="40.0" x2="224.2" y2="150.0" stroke="#121015" stroke-width="18.7" stroke-linecap="round"/>
+  <line x1="175.8" y1="150.0" x2="224.2" y2="150.0" stroke="#121015" stroke-width="18.7" stroke-linecap="round"/>
+  <line x1="175.8" y1="150.0" x2="167.2" y2="232.0" stroke="#121015" stroke-width="18.7" stroke-linecap="round"/>
+  <line x1="167.2" y1="232.0" x2="159.1" y2="308.6" stroke="#121015" stroke-width="18.7" stroke-linecap="round"/>
+  <line x1="224.2" y1="150.0" x2="232.8" y2="232.0" stroke="#121015" stroke-width="18.7" stroke-linecap="round"/>
+  <line x1="232.8" y1="232.0" x2="240.9" y2="308.6" stroke="#121015" stroke-width="18.7" stroke-linecap="round"/>
+  <line x1="200.0" y1="40.0" x2="200.0" y2="-20.5" stroke="#121015" stroke-width="18.7" stroke-linecap="round"/>
+  <circle cx="200.0" cy="-20.5" r="22.4" fill="none" stroke="#121015" stroke-width="18.7"/>
+  <line x1="161.5" y1="40.0" x2="238.5" y2="40.0" stroke="#f5c542" stroke-width="9.9" stroke-linecap="round"/>
+  <line x1="161.5" y1="40.0" x2="124.3" y2="87.7" stroke="#f5c542" stroke-width="9.9" stroke-linecap="round"/>
+  <line x1="124.3" y1="87.7" x2="177.1" y2="102.8" stroke="#f5c542" stroke-width="9.9" stroke-linecap="round"/>
+  <line x1="238.5" y1="40.0" x2="275.7" y2="87.7" stroke="#f5c542" stroke-width="9.9" stroke-linecap="round"/>
+  <line x1="275.7" y1="87.7" x2="222.9" y2="102.8" stroke="#f5c542" stroke-width="9.9" stroke-linecap="round"/>
+  <line x1="161.5" y1="40.0" x2="175.8" y2="150.0" stroke="#f5c542" stroke-width="9.9" stroke-linecap="round"/>
+  <line x1="238.5" y1="40.0" x2="224.2" y2="150.0" stroke="#f5c542" stroke-width="9.9" stroke-linecap="round"/>
+  <line x1="175.8" y1="150.0" x2="224.2" y2="150.0" stroke="#f5c542" stroke-width="9.9" stroke-linecap="round"/>
+  <line x1="175.8" y1="150.0" x2="167.2" y2="232.0" stroke="#f5c542" stroke-width="9.9" stroke-linecap="round"/>
+  <line x1="167.2" y1="232.0" x2="159.1" y2="308.6" stroke="#f5c542" stroke-width="9.9" stroke-linecap="round"/>
+  <line x1="224.2" y1="150.0" x2="232.8" y2="232.0" stroke="#f5c542" stroke-width="9.9" stroke-linecap="round"/>
+  <line x1="232.8" y1="232.0" x2="240.9" y2="308.6" stroke="#f5c542" stroke-width="9.9" stroke-linecap="round"/>
+  <line x1="200.0" y1="40.0" x2="200.0" y2="-20.5" stroke="#f5c542" stroke-width="9.9" stroke-linecap="round"/>
+  <circle cx="200.0" cy="-20.5" r="22.4" fill="none" stroke="#f5c542" stroke-width="9.9"/>
+  <circle cx="177.1" cy="102.8" r="9.4" fill="#f5c542" stroke="#121015" stroke-width="5.0"/>
+  <circle cx="222.9" cy="102.8" r="9.4" fill="#f5c542" stroke="#121015" stroke-width="5.0"/>
+  <circle cx="159.1" cy="308.6" r="9.4" fill="#f5c542" stroke="#121015" stroke-width="5.0"/>
+  <circle cx="240.9" cy="308.6" r="9.4" fill="#f5c542" stroke="#121015" stroke-width="5.0"/>
+  <text x="200" y="300" text-anchor="middle" fill="#fff8e7" font-family="Bangers, Impact, sans-serif" font-size="22" letter-spacing="2">M&#227;OS NA CINTURA</text>
+</svg>

@@ -23,6 +23,25 @@
   <span id="m-gravando" class="bangers escondido">● GRAVANDO TESTE</span>
 </div>
 
+<!-- instruções da rodada -->
+<section id="tutorial" class="escondido">
+  <div class="tut-caixa">
+    <header class="tut-topo">
+      <span id="tut-n" class="bangers"></span>
+      <h2 id="tut-titulo" class="bangers grito"></h2>
+      <span id="tut-tempo" class="bangers"></span>
+    </header>
+    <div class="tut-corpo">
+      <img id="tut-img" alt="">
+      <p id="tut-texto"></p>
+    </div>
+    <footer class="tut-pe">
+      <b>I</b> liga e desliga as instru&ccedil;&otilde;es &middot;
+      elas voltam sozinhas na pr&oacute;xima partida
+    </footer>
+  </div>
+</section>
+
 <!-- sinal do Faroeste. SEM animação de entrada de propósito: é dele que o
      tempo de reação é medido, então ele tem de aparecer inteiro de uma vez. -->
 <div id="sinal" class="escondido"><span class="bangers">SAQUE!</span></div>
@@ -183,6 +202,20 @@
       <h3 class="bangers" style="margin-top:2.2vmin">IMAGEM</h3>
       <div id="cfg-controles"></div>
       <p class="cfg-pe" id="cfg-caps"></p>
+
+      <h3 class="bangers" style="margin-top:2.2vmin">INSTRU&Ccedil;&Otilde;ES</h3>
+      <div id="cfg-tut">
+        <button id="cfg-tutorial" class="cam">
+          <span class="n">I</span>
+          <span class="rot">Mostrar o tutorial antes de cada rodada</span>
+          <span class="marca"></span>
+        </button>
+      </div>
+      <p class="cfg-pe">
+        Come&ccedil;a sempre ligado. Se voc&ecirc; desligar no meio de um cabo de guerra,
+        ele volta ligado na pr&oacute;xima partida &mdash; quem chega na feira nunca
+        viu o jogo.
+      </p>
 
       <h3 class="bangers" style="margin-top:2.2vmin">ENSAIO SOZINHO</h3>
       <div id="cfg-modos">

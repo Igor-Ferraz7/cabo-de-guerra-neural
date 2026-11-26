@@ -165,3 +165,20 @@ alguns KB, ao contrário de um vídeo.
 
 Os três primeiros quadros saem das contas: a primeira inferência do torch leva
 3–4 segundos e não representa nada.
+
+## Tutorial das rodadas
+
+Antes de cada rodada aparece uma tela de instruções, com texto e desenho da
+pose. **Tecla `I`** liga e desliga, e tem botão no painel `C`.
+
+Ele **volta ligado sozinho a cada partida nova**, mesmo que você tenha
+desligado na anterior — na feira, quem chega nunca viu o jogo. Desligue para
+quem já jogou: economiza 24 segundos por partida.
+
+As figuras são geradas das mesmas poses que o jogo reconhece. Se algum dia os
+ângulos de `jogo/bot.py` mudarem, rode de novo para as instruções não ficarem
+ensinando uma pose errada:
+
+```powershell
+py -3.12 jogo\figuras_tutorial.py
+```
