@@ -226,6 +226,25 @@ Dois controles são feitos **no navegador** e por isso funcionam em qualquer câ
 
 **Medição de `imgsz`** (um quadro do teste de perto, 26/11): 640 → 8,5 FPS e **só 1 pessoa**; 480 → 15,0 FPS, 23 pontos; 384 → 17,9; 320 → 20,7; 256 → **25,4 FPS e 24 pontos**. Menor foi mais rápido **e não pior**. **Ressalva séria:** isso é um quadro, de perto. A 2,5 m a conclusão pode inverter. Refazer a medição na distância real antes de mudar o padrão.
 
+**Classificador de poses (`jogo/poses.py`).** Duas implementações atrás da mesma interface `prever(kp, cf) -> (classe, confiança)`: `ClassificadorRegra` (geometria, existe) e `ClassificadorMLP` (a treinar, B1). A normalização é a que o banner descreve — origem no meio do quadril, escala pelo tronco — e é a mesma para as duas.
+
+A regra existe para destravar Faroeste e Polichinelo antes de haver gravações, para servir de **linha de base comparável** ("a MLP acertou X% contra Y% da regra" é resultado; acurácia solta não é) e como rede de segurança.
+
+Medido com `py -3.12 jogo\bot.py --classificador`: **100% de acerto** nas cinco poses geradas com 6° de ruído. Falso positivo em poses a mais de 25° de qualquer classe: **38%** com confiança ≥ 0,85 — regra frouxa. É o número a bater com a MLP. Para o Faroeste, mitigar exigindo confiança alta **e** a pose se mantendo por 2 quadros seguidos.
+
+**Bots (`jogo/bot.py`).** Poses geradas por **ângulos de articulação** e cinemática direta, enquanto o classificador mede **posições** — representações diferentes, então concordar diz alguma coisa. Testa máquina de estados, pontuação, troca de papéis e semelhança. **Não testa** YOLO, enquadramento, luz, FPS nem latência: ali não há imagem.
+
+Os bots acharam quatro coisas em uma tarde:
+
+1. **Constante errada no classificador.** "Pernas juntas" nunca dava menos que 0,74 porque o quadril sozinho já afasta os tornozelos ~0,44 tronco. "Y" acertava 30%. Corrigido para juntas ≤ 0,85 e abertas ≥ 1,15; foi para 100%.
+2. **Semelhança sem alcance útil.** Com os pesos de 25/11, poses *diferentes* davam 71 de média e até **88** ("Y" contra "braços abertos"), e 45° de erro ainda dava 82 — os limiares 80/60 não significavam nada. Recalibrado: braço com peso 1,0, perna 0,6, tronco 0,25, ombros/quadril 0,10, cabeça 0,15, e `DIVISOR_ANGULO` de 90° para **45°**. Poses diferentes caíram para 45 de média (máx 70); mesma pose com 10° de erro dá 87.
+3. **A nota premiava quem tremia.** Era o máximo de um quadro solto na janela de cópia: quem se mexia acertava um quadro por sorte. Agora é o máximo de uma **média de 5 quadros seguidos** (`JANELA_POSE`). A etapa se chama "segure a pose".
+4. **A partida não termina.** Ver abaixo — é decisão de regra, não bug.
+
+**A partida do Espelho não acaba (em aberto).** Como os papéis se alternam a cada turno e quem copia quase sempre ganha, a corda fica indo e voltando entre +2 e 0. Medido: **21 de 30 partidas** não chegam ao fim em 400 s simulados. E mesmo as que terminam levam 6+ turnos × 22 s = mais de 2 minutos **só nesta rodada**, enquanto o orçamento do visitante inteiro é de 2 minutos.
+
+Proposta a decidir: o Espelho passa a ter **número fixo de turnos** (2, um para cada), o vencedor da rodada é quem somou mais pontos, e a corda anda **por rodada**, não por turno — que é como o CLAUDE.md descreve o jogo desde o começo. Aí a partida é Faroeste + Espelho + Polichinelo e cabe no tempo.
+
 **Sem cache.** O servidor manda `Cache-Control: no-store` em tudo. Sem isso o navegador continuava rodando o `app.js` antigo depois de editar o arquivo — o sintoma é "mudei o código e nada aconteceu".
 
 **Seleção de lutador (`web/`):** 8 retratos originais importados do protótipo "Punho de Nanquim". A escolha é feita **pelo corpo**, com os mesmos pontos do YOLO — numa feira os jogadores estão a 2,5 m do notebook, longe do teclado:

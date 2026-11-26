@@ -53,16 +53,31 @@ WEB = AQUI.parent / "web"
 # Os pesos existem porque nem todo segmento discrimina igual. Com as duas
 # pessoas de frente para a camera, a linha dos ombros e a do quadril ficam
 # quase horizontais em todo mundo: sem peso menor elas so inflariam a nota.
+# Os pesos foram recalibrados em 26/11 contra poses geradas (jogo/bot.py).
+# A primeira versão dava peso alto a tronco, ombros, quadril e cabeça — que são
+# quase IDÊNTICOS em qualquer pessoa em pé. Eles inflavam a base e diluíam os
+# braços, que são o que realmente distingue uma pose da outra. Medido:
+#
+#                        poses diferentes   mesma pose, 10° de erro   separação
+#   pesos antigos, /90         71 (máx 88)            95                  7
+#   braço pesado,  /45         45 (máx 70)            87                 16
+#
+# Com a versão antiga, "Y" contra "braços abertos" dava 88 — acima do limiar
+# de 2 pontos. Ou seja: os limiares 80/60 não significavam nada.
 MEMBROS = {
-    "braço esquerdo": ([(5, 7), (7, 9)],   1.0),
-    "braço direito":  ([(6, 8), (8, 10)],  1.0),
-    "perna esquerda": ([(11, 13), (13, 15)], 1.0),
-    "perna direita":  ([(12, 14), (14, 16)], 1.0),
-    "tronco":         ([(5, 11), (6, 12)], 0.8),
-    "ombros":         ([(5, 6)],           0.5),
-    "quadril":        ([(11, 12)],         0.5),
-    "cabeça":         ([(0, 5), (0, 6)],   0.5),
+    "braço esquerdo": ([(5, 7), (7, 9)],     1.00),
+    "braço direito":  ([(6, 8), (8, 10)],    1.00),
+    "perna esquerda": ([(11, 13), (13, 15)], 0.60),
+    "perna direita":  ([(12, 14), (14, 16)], 0.60),
+    "tronco":         ([(5, 11), (6, 12)],   0.25),
+    "ombros":         ([(5, 6)],             0.10),
+    "quadril":        ([(11, 12)],           0.10),
+    "cabeça":         ([(0, 5), (0, 6)],     0.15),
 }
+# Quanto de diferença angular zera a nota do segmento. Era 90°, o que fazia
+# 45° de erro ainda valer meio ponto.
+DIVISOR_ANGULO = 45.0
+JANELA_POSE = 5    # quadros seguidos que entram na média da nota
 CONF_MIN = 0.4
 SEGS_MIN = 6      # abaixo disso a pessoa nao esta inteira no quadro
 
@@ -79,7 +94,7 @@ def semelhanca(kp_a, cf_a, kp_b, cf_b):
             va, vb = kp_a[b] - kp_a[a], kp_b[b] - kp_b[a]
             ang = abs(math.degrees(math.atan2(va[1], va[0]) - math.atan2(vb[1], vb[0])))
             ang = min(ang, 360 - ang)
-            n = max(0.0, 1 - ang / 90)
+            n = max(0.0, 1 - ang / DIVISOR_ANGULO)
             soma += n * peso
             peso_total += peso
             usados += 1
@@ -112,6 +127,7 @@ class Jogo:
         self.sim_atual = None
         self.pior = None
         self.segs = 0           # quantos segmentos entraram na ultima conta
+        self.janela = []        # notas dos ultimos quadros, para suavizar
         self.msg_result = ""
         self.ultimo_ponto = None   # {"vencedor": 0|1, "pts": n} da ultima pontuacao
 
@@ -146,13 +162,23 @@ class Jogo:
         elif e == "pose" and self.restante(self.T_POSE) == 0:
             self.alvo = (lider["kp"].copy(), lider["cf"].copy())
             self.melhor, self.sim_atual, self.pior, self.segs = 0.0, None, None, 0
+            self.janela = []
             self.ir("copia")
         elif e == "copia":
             s, pior, segs = semelhanca(self.alvo[0], self.alvo[1], copia["kp"], copia["cf"])
             self.sim_atual, self.segs = s, segs
             if s is not None:
                 self.pior = pior
-                self.melhor = max(self.melhor, s)
+                # A nota é o melhor de uma MÉDIA de quadros seguidos, não o
+                # melhor quadro solto. Com o máximo cru, quem se mexia muito
+                # acertava um quadro por sorte e levava nota alta — medido com
+                # bots: 96% mesmo copiando mal. A etapa se chama "segure a
+                # pose"; então o que vale é ter segurado.
+                self.janela.append(s)
+                if len(self.janela) > JANELA_POSE:
+                    self.janela.pop(0)
+                if len(self.janela) == JANELA_POSE:
+                    self.melhor = max(self.melhor, sum(self.janela) / JANELA_POSE)
             if self.restante(self.T_COPIA) == 0:
                 self.pontuar()
                 self.ir("resultado")
