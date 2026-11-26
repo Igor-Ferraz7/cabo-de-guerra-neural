@@ -202,6 +202,15 @@ Dois controles são feitos **no navegador** e por isso funcionam em qualquer câ
 - **Pausa:** congela o relógio da etapa empurrando `t0` junto com o tempo. Serve para parar em qualquer etapa e olhar com calma, e também para tirar captura.
 - Os dois modos são reenviados ao servidor quando o WebSocket reconecta, para sobreviverem a um reinício do servidor.
 
+**Repositório e publicação.** A pasta virou repositório git (branch `main`) em 26/11, com `README.md`, `LICENCAS.md`, `requirements.txt`, `.gitignore` e `Dockerfile`. 38 arquivos, ~15 MB.
+
+- **A Ultralytics é AGPL-3.0, e a AGPL alcança uso em rede.** Se o jogo for hospedado publicamente, o código completo tem de estar disponível para quem o usa. Com o repositório **público**, está atendido; a partir de um repositório **privado**, não estaria. Isso decide a visibilidade do repositório.
+- `web/app.js` usa `wss:` quando a página é `https:`. Sem isso o jogo só funciona em localhost.
+- `servidor.py` aceita `--host 0.0.0.0` (e lê a variável `PORT`), necessário para contêiner.
+- `getUserMedia` exige HTTPS fora do localhost. Qualquer publicação tem de ser por HTTPS.
+- A fonte `PressStart2P.ttf` foi removida: sobra da identidade antiga, não referenciada.
+- O `CLAUDE.md` contém dois links de artifact privados (linhas da tabela de estado). Decidir se saem antes do primeiro `push`, porque o histórico do git é público para sempre.
+
 **Sem cache.** O servidor manda `Cache-Control: no-store` em tudo. Sem isso o navegador continuava rodando o `app.js` antigo depois de editar o arquivo — o sintoma é "mudei o código e nada aconteceu".
 
 **Seleção de lutador (`web/`):** 8 retratos originais importados do protótipo "Punho de Nanquim". A escolha é feita **pelo corpo**, com os mesmos pontos do YOLO — numa feira os jogadores estão a 2,5 m do notebook, longe do teclado:
