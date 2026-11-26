@@ -50,8 +50,9 @@ Jogo interativo em que **duas pessoas disputam um cabo de guerra virtual usando 
 | `banner/build_banner.py` | Gera o PDF a partir do template. Edite o bloco CONFIGURAÇÃO no topo. |
 | Protótipo visual da interface (canvas no Claude) | https://claude.ai/artifact/Ct45KeyeMvgjkrx6hZh317 (pode ser exportado como imagem para a Figura 2 no plano B) |
 | Comparação das ideias finalistas (doc) | https://claude.ai/artifact/QCiDxEynh2zNtQJpXP5VeZ |
-| Rede de poses (MLP) | **Não começou.** |
-| Rodadas Faroeste e Polichinelo | **Não começaram.** |
+| Rede de poses (MLP) | **Não começou.** A interface já existe (`jogo/poses.py`) e a regra geométrica ocupa o lugar dela. |
+| Rodada **Faroeste** | Implementada e validada com bots. Depende da MLP só para trocar a regra geométrica pelo classificador treinado. |
+| Rodada **Polichinelo** | **Não começou.** |
 
 ## Estrutura da pasta
 
@@ -280,7 +281,25 @@ Medido depois da mudança: **todas as partidas terminam**, mediana de 2 turnos e
 - Avaliação honesta: testar numa **pessoa que não participou do treino** (deixar uma pessoa de fora), além da divisão aleatória.
 - Coleta: programa que grava os pontos (não as imagens) com o rótulo escolhido por tecla, uns 30 s por pose por pessoa.
 
-**Faroeste (B2):** sinal visual com espera aleatória (2–5 s). O vencedor é o primeiro em que a rede detecta "saque" após o sinal. Saque antes do sinal = queimou (o adversário ganha os passos). A precisão é limitada pelo FPS (~33 ms a 30 FPS): mostrar empate quando a diferença for menor que 1 quadro.
+**Faroeste — implementado em 26/11.** Estados `far_prepara` (3 s) → `far_espera` (2–5 s aleatórios) → `far_sinal` (até 4 s) → `fim_rodada`.
+
+**De que relógio sai o tempo de reação.** Este foi o ponto delicado: o servidor e o navegador têm relógios diferentes, e somar os dois daria um número inventado. A solução é medir **inteiramente no relógio do navegador**:
+
+1. o servidor entra em `far_sinal` mas **não começa a contar**;
+2. o navegador desenha o sinal e manda `{acao:"sinal_visto", ts:performance.now()}`;
+3. o servidor guarda esse `ts` e só então o relógio da etapa vale;
+4. cada quadro da câmera já vem carimbado com o `performance.now()` da captura;
+5. reação = `ts do quadro` − `ts do sinal`. Mesmo relógio dos dois lados.
+
+O sinal (`#sinal`) **não tem animação de entrada**, de propósito: tem de aparecer inteiro de uma vez, senão o instante medido fica ambíguo.
+
+**Contra falso positivo:** o saque exige confiança ≥ 0,85 **e** 2 quadros seguidos — a regra geométrica erra para o lado frouxo (38% em poses aleatórias distantes). O custo é um quadro de atraso, descontado usando o `ts` do **primeiro** quadro da sequência, não do último; senão a reação sairia ~100 ms maior do que foi.
+
+**Janela de empate:** `max(40 ms, intervalo entre quadros)`, com o intervalo medido ao vivo. Abaixo disso os dois saques são indistinguíveis e dizer quem foi mais rápido seria inventar precisão. A interface mostra os tempos com `± janela`.
+
+**Queimar a largada:** sacar durante `far_espera` entrega a rodada ao adversário. Os dois queimando = ninguém leva.
+
+Medido com bots (60 partidas, reflexos 320 ms × 520 ms, 10% de chance de queimar): Bot-A leva o Faroeste 52 a 8, **zero empates falsos**, queimadas em 11 partidas, reação medida com mediana de 500 ms. As partidas completas (Faroeste + Espelho) levam **61 s**.
 
 **Polichinelo (B3):** contar a transição braços abertos → neutra validada pela rede, em 10 s. Cada repetição certa vale 2 passos (rodada final).
 

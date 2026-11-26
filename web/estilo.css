@@ -579,3 +579,19 @@ body.configurando #video { filter: saturate(0.9) contrast(1.05) !important; }
 #cfg-reg { margin-top: 0.8vmin; }
 .cam.gravando { background: #e0263c; color: var(--papel); box-shadow: 4px 4px 0 #000; }
 .cfg-pe code { font-family: ui-monospace, Consolas, monospace; color: var(--cap); }
+
+/* ====================================================== sinal do Faroeste */
+#sinal {
+  position: fixed; inset: 0; z-index: 70;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--cap); pointer-events: none;
+  /* nenhuma transição e nenhuma animação: tem de surgir pronto */
+}
+#sinal span {
+  font-size: 22vmin; color: var(--tinta);
+  -webkit-text-stroke: 0.025em var(--papel); paint-order: stroke fill;
+  text-shadow: 0.05em 0.06em 0 rgba(0, 0, 0, 0.35);
+  transform: skew(-8deg);
+}
+/* chips das rodadas: a ativa é decidida pelo servidor */
+.chip[data-r] { transition: none; }

@@ -37,7 +37,10 @@ from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
 from ultralytics import YOLO
 
+import random
+
 from registro import Registrador
+from poses import classificador_padrao
 
 AQUI = Path(__file__).parent
 WEB = AQUI.parent / "web"
@@ -123,6 +126,16 @@ class Jogo:
     LIMITE = 4          # passos até a ponta da corda
     TURNOS_ESPELHO = 2  # uma pose para cada jogador
 
+    # ordem das rodadas. O Polichinelo entra aqui quando existir.
+    ORDEM = ["faroeste", "espelho"]
+
+    # Faroeste
+    T_FAR_PREPARA = 3.0        # "fiquem de braços baixos"
+    FAR_ESPERA = (2.0, 5.0)    # espera aleatória antes do sinal
+    T_FAR_LIMITE = 4.0         # tempo máximo para sacar depois do sinal
+    CONF_SAQUE = 0.85          # confiança mínima do classificador
+    SAQUE_QUADROS = 2          # quadros seguidos, contra falso positivo
+
     # quanto cada rodada puxa a corda. Somam 4, que é o limite: quem ganhar as
     # três leva a corda até a ponta.
     PASSOS = {"faroeste": 1, "espelho": 1, "polichinelo": 2}
@@ -153,8 +166,20 @@ class Jogo:
         self.turno = 1             # turno dentro da rodada
         self.pontos_rodada = [0, 0]
         self.melhor_rodada = [0.0, 0.0]   # desempate da rodada
-        self.ultima_rodada = None  # {"vencedor", "passos", "pontos"}
+        self.ultima_rodada = None  # {"vencedor", "passos", ...}
         self.vencedor = None       # quem ganhou a partida (None = empate)
+        self.classificador = classificador_padrao()
+        self._zerar_faroeste()
+
+    def _zerar_faroeste(self):
+        self.espera_sinal = random.uniform(*self.FAR_ESPERA)
+        self.ts_sinal = None       # instante do sinal, NO RELÓGIO DO NAVEGADOR
+        self.reacao = [None, None] # ms de cada jogador
+        self.queimou = [False, False]
+        self.saque_seguidos = [0, 0]
+        self.ts_primeiro_saque = [None, None]
+        self.intervalo_ms = 100.0  # entre quadros; define a janela de empate
+        self._ts_ant = None
 
     def ir(self, estado):
         self.estado, self.t0 = estado, time.time()
@@ -166,9 +191,18 @@ class Jogo:
     def duracao_atual(self):
         return {"prepara": self.T_PREPARA, "pose": self.T_POSE,
                 "copia": self.T_COPIA, "resultado": self.T_RESULT,
-                "fim_rodada": self.T_RODADA}.get(self.estado)
+                "fim_rodada": self.T_RODADA,
+                "far_prepara": self.T_FAR_PREPARA,
+                "far_espera": self.espera_sinal,
+                "far_sinal": self.T_FAR_LIMITE}.get(self.estado)
 
-    def atualizar(self, jogadores, pausado=False):
+    @property
+    def janela_empate(self):
+        """Dois saques separados por menos de um quadro são indistinguíveis.
+        Dizer quem foi mais rápido aí seria inventar precisão que não existe."""
+        return max(40.0, self.intervalo_ms)
+
+    def atualizar(self, jogadores, pausado=False, ts=None):
         agora = time.time()
         dt = agora - self.ultimo_tique
         self.ultimo_tique = agora
@@ -183,10 +217,19 @@ class Jogo:
         if e == "fim_rodada":
             # só mostra o resultado: não pode travar se alguém sair do quadro
             if self.restante(self.T_RODADA) == 0:
-                self.encerrar()
+                self.proxima_rodada()
             return
         if len(jogadores) < 2:
             return  # pausa enquanto alguém sai do quadro
+
+        if ts is not None:
+            if self._ts_ant is not None and ts > self._ts_ant:
+                self.intervalo_ms = 0.8 * self.intervalo_ms + 0.2 * (ts - self._ts_ant)
+            self._ts_ant = ts
+
+        if e.startswith("far_"):
+            self._faroeste(jogadores, ts)
+            return
         lider, copia = jogadores[self.lider], jogadores[1 - self.lider]
         if e == "prepara" and self.restante(self.T_PREPARA) == 0:
             self.ir("pose")
@@ -216,12 +259,92 @@ class Jogo:
         elif e == "resultado" and self.restante(self.T_RESULT) == 0:
             if self.turno >= self.TURNOS_ESPELHO:
                 self.fechar_rodada()
-                self.ir("fim_rodada")
             else:
                 self.turno += 1
                 self.lider = 1 - self.lider
                 self.ir("prepara")
 
+    # ------------------------------------------------------------ Faroeste
+    def _detectar_saque(self, jogadores, ts):
+        """Saque de cada jogador, exigindo quadros seguidos.
+
+        O classificador erra para o lado frouxo (38% de falso positivo em poses
+        aleatórias distantes, medido em jogo/bot.py). Exigir confiança alta E
+        persistência derruba muito isso, ao custo de um quadro de atraso — que
+        é descontado usando o ts do PRIMEIRO quadro da sequência, não do
+        último, senão a reação sairia ~100 ms maior do que foi.
+        """
+        sacou = [False, False]
+        for i in (0, 1):
+            classe, conf = self.classificador.prever(jogadores[i]["kp"], jogadores[i]["cf"])
+            if classe == "saque" and conf >= self.CONF_SAQUE:
+                if self.saque_seguidos[i] == 0:
+                    self.ts_primeiro_saque[i] = ts
+                self.saque_seguidos[i] += 1
+            else:
+                self.saque_seguidos[i] = 0
+                self.ts_primeiro_saque[i] = None
+            sacou[i] = self.saque_seguidos[i] >= self.SAQUE_QUADROS
+        return sacou
+
+    def _faroeste(self, jogadores, ts):
+        e = self.estado
+        if e == "far_prepara":
+            if self.restante(self.T_FAR_PREPARA) == 0:
+                self.ir("far_espera")
+            return
+
+        sacou = self._detectar_saque(jogadores, ts)
+
+        if e == "far_espera":
+            for i in (0, 1):
+                if sacou[i]:
+                    self.queimou[i] = True
+            if any(self.queimou):
+                self.fechar_faroeste()
+            elif self.restante(self.espera_sinal) == 0:
+                self.ts_sinal = None
+                self.saque_seguidos = [0, 0]
+                self.ts_primeiro_saque = [None, None]
+                self.ir("far_sinal")
+            return
+
+        if e == "far_sinal":
+            if self.ts_sinal is None:
+                # o navegador ainda não confirmou que desenhou o sinal. Sem
+                # isso não há de onde medir, então o relógio da etapa espera.
+                self.t0 = time.time()
+                return
+            for i in (0, 1):
+                if sacou[i] and self.reacao[i] is None:
+                    t = self.ts_primeiro_saque[i]
+                    if t is not None:
+                        self.reacao[i] = round(max(0.0, t - self.ts_sinal), 1)
+            if all(r is not None for r in self.reacao) or self.restante(self.T_FAR_LIMITE) == 0:
+                self.fechar_faroeste()
+
+    def fechar_faroeste(self):
+        q0, q1 = self.queimou
+        r0, r1 = self.reacao
+        if q0 and q1:
+            venc = None                      # os dois queimaram: ninguém leva
+        elif q0 or q1:
+            venc = 1 if q0 else 0            # quem queimou entrega a rodada
+        elif r0 is None and r1 is None:
+            venc = None                      # ninguém sacou a tempo
+        elif r0 is None or r1 is None:
+            venc = 1 if r0 is None else 0
+        elif abs(r0 - r1) < self.janela_empate:
+            venc = None                      # diferença menor que um quadro
+        else:
+            venc = 0 if r0 < r1 else 1
+        self._aplicar_rodada(venc, {
+            "reacao": list(self.reacao),
+            "queimou": list(self.queimou),
+            "janela": round(self.janela_empate),
+        })
+
+    # ------------------------------------------------------------ Espelho
     def pontuar(self):
         """Pontos do TURNO. A corda não anda aqui — anda no fim da rodada."""
         s = self.melhor
@@ -240,7 +363,7 @@ class Jogo:
         self.ultimo_ponto = {"vencedor": vencedor, "pts": pts}
 
     def fechar_rodada(self):
-        """Soma os turnos, decide a rodada e aí sim puxa a corda."""
+        """Soma os turnos do Espelho e decide a rodada."""
         a, b = self.pontos_rodada
         if a != b:
             venc = 0 if a > b else 1
@@ -248,12 +371,38 @@ class Jogo:
             # empate em pontos: desempata pela melhor cópia da rodada
             ma, mb = self.melhor_rodada
             venc = None if ma == mb else (0 if ma > mb else 1)
+        self._aplicar_rodada(venc, {"pontos": list(self.pontos_rodada)})
+
+    # ------------------------------------------------------------ rodadas
+    def _aplicar_rodada(self, venc, extra=None):
+        """Puxa a corda e vai para a tela de fim de rodada."""
         passos = self.PASSOS[self.rodada] if venc is not None else 0
         if venc is not None:
             self.corda += passos if venc == 1 else -passos
             self.corda = max(-self.LIMITE, min(self.LIMITE, self.corda))
         self.ultima_rodada = {"rodada": self.rodada, "vencedor": venc,
-                              "passos": passos, "pontos": list(self.pontos_rodada)}
+                              "passos": passos, **(extra or {})}
+        self.ir("fim_rodada")
+
+    def iniciar_rodada(self, nome):
+        self.rodada = nome
+        self.turno = 1
+        self.pontos_rodada = [0, 0]
+        self.melhor_rodada = [0.0, 0.0]
+        if nome == "faroeste":
+            self._zerar_faroeste()
+            self.ir("far_prepara")
+        else:
+            self.lider = 0
+            self.ir("prepara")
+
+    def proxima_rodada(self):
+        i = self.ORDEM.index(self.rodada)
+        # chegou na ponta da corda: acabou, não precisa jogar o resto
+        if abs(self.corda) >= self.LIMITE or i + 1 >= len(self.ORDEM):
+            self.encerrar()
+        else:
+            self.iniciar_rodada(self.ORDEM[i + 1])
 
     def encerrar(self):
         """Fim de partida. Empate na corda é decidido pela última rodada, que é
@@ -367,7 +516,14 @@ def criar_app(args):
                     acao = cmd.get("acao")
                     if acao == "comecar":
                         jogo.reset()
-                        jogo.ir("prepara")
+                        jogo.iniciar_rodada(Jogo.ORDEM[0])
+                    elif acao == "sinal_visto":
+                        # o navegador avisa QUANDO desenhou o sinal, no relógio
+                        # dele. É desse instante que a reação é medida, e é o
+                        # mesmo relógio que carimba cada quadro da câmera.
+                        if jogo.estado == "far_sinal" and jogo.ts_sinal is None:
+                            jogo.ts_sinal = float(cmd.get("ts") or 0)
+                            jogo.t0 = time.time()
                     elif acao == "reiniciar":
                         jogo.reset()
                     elif acao == "solo":
@@ -409,7 +565,7 @@ def criar_app(args):
                 if solo and len(jogadores) == 1:
                     jogadores.append(duplicar(jogadores[0], W))
                     jogadores.sort(key=lambda j: (j["box"][0] + j["box"][2]) / 2)
-                jogo.atualizar(jogadores, pausado)
+                jogo.atualizar(jogadores, pausado, ts)
 
                 if registrador is not None:
                     # "n" é quantos o YOLO achou de verdade, antes da cópia do
@@ -476,6 +632,9 @@ def criar_app(args):
                         "pontos": list(jogo.pontos_rodada),
                         "ultimaRodada": jogo.ultima_rodada,
                         "vencedor": jogo.vencedor,
+                        "reacao": list(jogo.reacao),
+                        "queimou": list(jogo.queimou),
+                        "janela": round(jogo.janela_empate),
                         "msg": jogo.msg_result,
                         "alvo": (pose_para_json(jogo.alvo[0], jogo.alvo[1], W, H)
                                  if jogo.alvo is not None else None),

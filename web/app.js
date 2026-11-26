@@ -654,9 +654,8 @@ function atualizarHUD() {
 
   const g = dados.jogo;
   verificarEventos(g);
-  const emTurno = ['prepara', 'pose', 'copia', 'resultado'].includes(g.estado);
-  $('#pilula').textContent = 'RODADA 2 · ESPELHO'
-    + (emTurno && g.turnos ? ` · TURNO ${g.turno}/${g.turnos}` : '');
+  pintarRodada(g);
+  mostrarSinal(g.estado === 'far_sinal');
   const n = dados.jogadores.length;
   const lid = g.lider, cop = 1 - g.lider;
   const restante = g.restante === null ? null
@@ -669,6 +668,16 @@ function atualizarHUD() {
   if (n < 2) {
     titulo = 'AGUARDANDO OS DOIS';
     dica = 'fiquem nas marcas do chão, de corpo inteiro';
+  } else if (g.estado === 'far_prepara') {
+    titulo = 'FAROESTE';
+    dica = 'braços para baixo · ao sinal, mãos na cintura';
+    contagem = Math.ceil(restante); verContagem = true;
+  } else if (g.estado === 'far_espera') {
+    titulo = 'ESPEREM O SINAL...';
+    dica = 'quem sacar antes entrega a rodada';
+  } else if (g.estado === 'far_sinal') {
+    titulo = '';
+    dica = '';
   } else if (g.estado === 'espera') {
     titulo = 'APERTE ESPAÇO';
   } else if (g.estado === 'prepara') {
@@ -699,11 +708,14 @@ function atualizarHUD() {
   } else if (g.estado === 'fim_rodada') {
     const r = g.ultimaRodada || {};
     quem = (r.vencedor === 0 || r.vencedor === 1) ? r.vencedor : null;
+    const faroeste = r.rodada === 'faroeste';
     titulo = quem === null ? 'RODADA EMPATADA' : 'LEVA A RODADA!';
-    verSem = true; rotulo = 'PONTOS DA RODADA';
-    valor = (g.pontos || [0, 0]).join(' — ');
+    verSem = true;
+    rotulo = faroeste ? 'TEMPO DE REAÇÃO' : 'PONTOS DA RODADA';
+    valor = faroeste ? '' : (g.pontos || [0, 0]).join(' — ');
     corValor = quem === null ? '' : classeDe(quem);
-    dica = quem === null ? 'a corda não anda' : `a corda anda ${r.passos} para o lado dele`;
+    dica = faroeste ? textoFaroeste(g)
+         : (quem === null ? 'a corda não anda' : `a corda anda ${r.passos} para o lado dele`);
   } else if (g.estado === 'fim') {
     quem = (g.vencedor === 0 || g.vencedor === 1) ? g.vencedor : null;
     titulo = quem === null ? 'EMPATE!' : 'VENCEU!';
@@ -957,6 +969,49 @@ $('#cfg-controles').addEventListener('click', async (e) => {
 aplicarZoom(parseFloat(ler('zoom')) || 1);
 aplicarEnq(ler('enq') === 'inteiro' ? 'inteiro' : 'preencher');
 
+// ------------------------------------------------------------- rodadas
+const RODADAS = {
+  faroeste:    { n: 1, nome: 'FAROESTE' },
+  espelho:     { n: 2, nome: 'ESPELHO' },
+  polichinelo: { n: 3, nome: 'POLICHINELO' },
+};
+const elSinal = $('#sinal');
+let sinalMostrado = false;
+
+/* O sinal aparece e, no mesmo instante, o navegador avisa o servidor em que
+   momento do relógio DELE isso aconteceu. É desse carimbo que a reação é
+   medida, e é o mesmo relógio que carimba cada quadro da câmera — então os
+   dois lados da conta vivem no mesmo tempo. */
+function mostrarSinal(sim) {
+  if (sim === sinalMostrado) return;
+  sinalMostrado = sim;
+  elSinal.classList.toggle('escondido', !sim);
+  if (sim && ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ acao: 'sinal_visto', ts: performance.now() }));
+  }
+}
+
+function pintarRodada(g) {
+  const r = RODADAS[g.rodada] || RODADAS.espelho;
+  const emTurno = ['prepara', 'pose', 'copia', 'resultado'].includes(g.estado);
+  $('#pilula').textContent = `RODADA ${r.n} · ${r.nome}`
+    + (emTurno && g.turnos ? ` · TURNO ${g.turno}/${g.turnos}` : '');
+  document.querySelectorAll('.chip').forEach((c, i) => {
+    c.classList.toggle('ativo', i + 1 === r.n);
+  });
+}
+
+function textoFaroeste(g) {
+  const r = g.ultimaRodada || {};
+  const q = r.queimou || [false, false];
+  if (q[0] && q[1]) return 'os dois queimaram a largada';
+  if (q[0] || q[1]) return `${nomeDe(q[0] ? 0 : 1)} queimou a largada`;
+  const t = r.reacao || [null, null];
+  const f = (v) => (v === null ? '—' : `${Math.round(v)} ms`);
+  return `${nomeDe(0)} ${f(t[0])} · ${nomeDe(1)} ${f(t[1])}`
+       + (r.janela ? ` (± ${r.janela} ms)` : '');
+}
+
 // ------------------------------------------------------------- cartaz de HQ
 const elCartaz = $('#cartaz');
 let czTimer = null, czFila = null;
@@ -980,6 +1035,7 @@ function cartaz(op) {
 }
 
 function limparCartaz() {
+  mostrarSinal(false);
   clearTimeout(czTimer); clearTimeout(czFila);
   elCartaz.classList.add('escondido');
 }
@@ -1001,7 +1057,8 @@ function verificarEventos(g) {
     const r = g.ultimaRodada || {};
     if (r.vencedor === 0 || r.vencedor === 1) {
       const f = LUTADORES[P[r.vencedor].cur];
-      cartaz({ texto: 'ESPELHO', sub: `${f.nome.toUpperCase()} LEVA A RODADA`,
+      cartaz({ texto: (RODADAS[r.rodada] || RODADAS.espelho).nome,
+               sub: `${f.nome.toUpperCase()} LEVA A RODADA`,
                cor: f.cor, retrato: arte(f), cheio: true, dur: 2200 });
     } else {
       cartaz({ texto: 'EMPATE', sub: 'A CORDA NÃO ANDA',

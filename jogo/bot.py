@@ -116,10 +116,11 @@ class Bot:
     `reacao_ms`: usado pelo Faroeste quando ele existir.
     """
 
-    def __init__(self, nome, precisao=0.8, reacao_ms=350, rng=None):
+    def __init__(self, nome, precisao=0.8, reacao_ms=350, prob_queima=0.10, rng=None):
         self.nome = nome
         self.precisao = max(0.0, min(1.0, precisao))
         self.reacao_ms = reacao_ms
+        self.prob_queima = prob_queima     # chance de sacar antes do sinal
         self.rng = rng or random.Random()
 
     @property
@@ -155,7 +156,7 @@ def simular_partida(bots, jogo_mod, rng, registrador=None, narrar=False,
     jogo_mod.time = rel
     jogo = jogo_mod.Jogo()
     jogo.reset()
-    jogo.ir("prepara")
+    jogo.iniciar_rodada(jogo_mod.Jogo.ORDEM[0])
 
     L, A = 480, 270
     centros = [(L * 0.28, A * 0.55), (L * 0.72, A * 0.55)]
@@ -164,6 +165,9 @@ def simular_partida(bots, jogo_mod, rng, registrador=None, narrar=False,
     pose_atual = None
     turnos, semelhancas = 0, []
     estado_ant = jogo.estado
+    ts = 50000.0                 # relógio do "navegador", em ms
+    queima_em = [None, None]     # instante em que cada bot queima a largada
+    far = None
 
     while jogo.estado != "fim" and rel.t - 1000.0 < limite_s:
         lider, copiador = jogo.lider, 1 - jogo.lider
@@ -173,17 +177,28 @@ def simular_partida(bots, jogo_mod, rng, registrador=None, narrar=False,
 
         jogadores = []
         for i in (0, 1):
-            if jogo.estado in ("pose", "copia", "resultado") and pose_atual:
-                alvo = pose_atual if (i == lider or jogo.estado != "pose") else "neutra"
-                copiando = (i == copiador and jogo.estado == "copia")
+            est = jogo.estado
+            if est in ("pose", "copia", "resultado") and pose_atual:
+                alvo = pose_atual if (i == lider or est != "pose") else "neutra"
+                copiando = (i == copiador and est == "copia")
                 kp, cf = bots[i].posar(alvo, centros[i], tronco, copiando)
+            elif est == "far_espera" and queima_em[i] is not None and ts >= queima_em[i]:
+                kp, cf = bots[i].posar("saque", centros[i], tronco)
+            elif (est == "far_sinal" and jogo.ts_sinal is not None
+                  and ts - jogo.ts_sinal >= bots[i].reacao_ms):
+                kp, cf = bots[i].posar("saque", centros[i], tronco)
             else:
                 kp, cf = bots[i].posar("neutra", centros[i], tronco)
             jogadores.append(dict(box=np.array([centros[i][0] - 60, 20,
                                                 centros[i][0] + 60, 250]),
                                   score=0.95, kp=kp, cf=cf))
 
-        jogo.atualizar(jogadores)
+        jogo.atualizar(jogadores, ts=ts)
+
+        # faz o papel do navegador: avisa que desenhou o sinal
+        if jogo.estado == "far_sinal" and jogo.ts_sinal is None:
+            jogo.ts_sinal = ts
+            jogo.t0 = rel.t
 
         if registrador is not None:
             registrador.anotar(
@@ -198,6 +213,28 @@ def simular_partida(bots, jogo_mod, rng, registrador=None, narrar=False,
             )
 
         if jogo.estado != estado_ant:
+            if jogo.estado == "far_espera":
+                for i in (0, 1):
+                    queima_em[i] = (ts + rng.uniform(300, jogo.espera_sinal * 1000)
+                                    if rng.random() < bots[i].prob_queima else None)
+            if (jogo.estado == "fim_rodada"
+                    and (jogo.ultima_rodada or {}).get("rodada") == "faroeste"):
+                r = jogo.ultima_rodada
+                far = dict(reacao=r.get("reacao"), queimou=r.get("queimou"),
+                           vencedor=r.get("vencedor"))
+                if narrar:
+                    q = [i for i, v in enumerate(r.get("queimou") or []) if v]
+                    if q:
+                        print("  faroeste: "
+                              + " e ".join(bots[i].nome for i in q)
+                              + " queimou a largada")
+                    else:
+                        t = r.get("reacao") or [None, None]
+                        quem = ("empate" if r.get("vencedor") is None
+                                else bots[r["vencedor"]].nome)
+                        print(f"  faroeste: {bots[0].nome} {t[0]} ms · "
+                              f"{bots[1].nome} {t[1]} ms "
+                              f"(janela {r.get('janela')} ms) -> {quem}")
             if jogo.estado == "copia":
                 # sorteia AQUI o erro desta tentativa: a virada de etapa só é
                 # visível depois de atualizar, e antes disso estado_ant já
@@ -214,11 +251,12 @@ def simular_partida(bots, jogo_mod, rng, registrador=None, narrar=False,
             estado_ant = jogo.estado
 
         rel.t += passo
+        ts += passo * 1000
 
-    venceu = None if jogo.estado != "fim" else (0 if jogo.corda < 0 else 1)
+    venceu = jogo.vencedor if jogo.estado == "fim" else None
     return dict(venceu=venceu, turnos=turnos, semelhancas=semelhancas,
                 corda=jogo.corda, travou=jogo.estado != "fim",
-                duracao=round(rel.t - 1000.0, 1))
+                duracao=round(rel.t - 1000.0, 1), far=far)
 
 
 # ------------------------------------------------------------- classificador
@@ -279,6 +317,10 @@ def main():
     ap.add_argument("--semente", type=int, default=7)
     ap.add_argument("--precisao-a", type=float, default=0.85)
     ap.add_argument("--precisao-b", type=float, default=0.60)
+    ap.add_argument("--reacao-a", type=float, default=320, help="ms de reflexo do Bot-A")
+    ap.add_argument("--reacao-b", type=float, default=520, help="ms de reflexo do Bot-B")
+    ap.add_argument("--queima", type=float, default=0.10,
+                    help="chance de cada bot queimar a largada")
     ap.add_argument("--classificador", action="store_true",
                     help="só confere o classificador de poses")
     ap.add_argument("--registrar", action="store_true",
@@ -292,8 +334,10 @@ def main():
 
     import servidor as jogo_mod     # traz a classe Jogo e a semelhança
 
-    bots = [Bot("Bot-A", args.precisao_a, rng=random.Random(args.semente)),
-            Bot("Bot-B", args.precisao_b, rng=random.Random(args.semente + 1))]
+    bots = [Bot("Bot-A", args.precisao_a, args.reacao_a, args.queima,
+                random.Random(args.semente)),
+            Bot("Bot-B", args.precisao_b, args.reacao_b, args.queima,
+                random.Random(args.semente + 1))]
     reg = Registrador("simulado", f"bots-{args.partidas}-partidas", meta={
         "classificador": P.classificador_padrao().nome,
         "precisão Bot-A": args.precisao_a, "precisão Bot-B": args.precisao_b,
@@ -303,6 +347,8 @@ def main():
     narrar = args.partidas == 1
     vitorias = {0: 0, 1: 0, None: 0}
     turnos, sems, travadas, duracoes = [], [], 0, []
+    far_venc = {0: 0, 1: 0, None: 0}
+    far_reacoes, far_queimas = [], 0
 
     for i in range(args.partidas):
         if narrar:
@@ -310,6 +356,11 @@ def main():
                   f"contra {bots[1].nome} (precisão {args.precisao_b}):")
         r = simular_partida(bots, jogo_mod, rng, reg, narrar)
         vitorias[r["venceu"]] += 1
+        if r.get("far"):
+            f = r["far"]
+            far_venc[f["vencedor"]] += 1
+            far_queimas += int(any(f.get("queimou") or []))
+            far_reacoes += [t for t in (f.get("reacao") or []) if t is not None]
         turnos.append(r["turnos"]); sems += r["semelhancas"]
         duracoes.append(r["duracao"])
         travadas += int(r["travou"])
@@ -322,6 +373,15 @@ def main():
     print(f"  duração    : mediana {np.median(duracoes):.0f} s")
     print(f"  semelhança : mediana {np.median(sems):.0f}% "
           f"(p10 {np.percentile(sems,10):.0f}%, p90 {np.percentile(sems,90):.0f}%)")
+    total_far = sum(far_venc.values())
+    if total_far:
+        print()
+        print(f"  faroeste   : {bots[0].nome} {far_venc[0]} · {bots[1].nome} {far_venc[1]}"
+              f" · empates {far_venc[None]}  (de {total_far})")
+        print(f"               queimaram a largada em {far_queimas} partida(s)")
+        if far_reacoes:
+            print(f"               reação medida: mediana {np.median(far_reacoes):.0f} ms "
+                  f"(de {min(far_reacoes):.0f} a {max(far_reacoes):.0f})")
     if travadas:
         print(f"  TRAVARAM   : {travadas} partida(s) não chegaram ao fim")
 
