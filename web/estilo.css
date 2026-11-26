@@ -636,3 +636,27 @@ body.configurando #video { filter: saturate(0.9) contrast(1.05) !important; }
   font: 400 1.4vmin 'OS', sans-serif; color: #8e8678; text-align: center;
 }
 .tut-pe b { color: var(--papel); }
+
+/* ====================================================== galeria de 14 */
+/* Com 8 cabia uma fileira só. Com 14, em fileira única cada retrato ficaria
+   com ~6,5vmin de largura — ninguém reconheceria o personagem de 2,5 m de
+   distância, que é onde os jogadores ficam. */
+.roster {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5vmin 0;
+  width: min(96vw, 98vmin);
+  margin: 0 auto;
+  padding: 0;
+}
+.tile { max-width: none; aspect-ratio: 0.9; margin: 0 -0.7vmin; }
+.tile .n { font-size: 1.4vmin; bottom: 0.4vmin; }
+.marca { font-size: 1.3vmin; }
+/* o quadro encolhe para as duas fileiras caberem na tela */
+.quadro { height: 36vh; }
+/* As novas artes são quadradas (2000x2000); as antigas eram retrato. Com
+   108% de altura o topo saía cortado — chapéu, mão levantada, cabelo. */
+.quadro .fig { height: 100%; }
+/* texto do cartaz segue a luminância da cor do personagem */
+#cz-texto { color: var(--cz-txt, #fff8e7); }
+#cz-sub { color: var(--cz-txt, #121015); opacity: 0.85; }

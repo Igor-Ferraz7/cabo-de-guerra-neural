@@ -256,7 +256,7 @@ Medido depois da mudança: **todas as partidas terminam**, mediana de 2 turnos e
 
 **Sem cache.** O servidor manda `Cache-Control: no-store` em tudo. Sem isso o navegador continuava rodando o `app.js` antigo depois de editar o arquivo — o sintoma é "mudei o código e nada aconteceu".
 
-**Seleção de lutador (`web/`):** 8 retratos originais importados do protótipo "Punho de Nanquim". A escolha é feita **pelo corpo**, com os mesmos pontos do YOLO — numa feira os jogadores estão a 2,5 m do notebook, longe do teclado:
+**Seleção de lutador (`web/`):** **14 retratos** (trocados em 26/11; eram 8 do protótipo "Punho de Nanquim"). A lista, as cores e o preparo das imagens estão em `ARTE.md`. Vários são caricaturas de pessoas reais — ver a ressalva em `LICENCAS.md`, que mudou quando o repositório virou público. A escolha é feita **pelo corpo**, com os mesmos pontos do YOLO — numa feira os jogadores estão a 2,5 m do notebook, longe do teclado:
 
 - levantar **uma** das mãos acima do ombro troca de lutador (1 passo a cada 420 ms enquanto a mão fica no alto);
 - levantar **as duas** e segurar 1,2 s confirma, com barra de progresso;

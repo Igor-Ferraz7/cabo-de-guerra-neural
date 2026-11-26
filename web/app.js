@@ -16,14 +16,20 @@
 
 // ------------------------------------------------------------- lutadores
 const LUTADORES = [
-  {id:'kaede',  nome:'Kaede Mori',    curto:'Kaede',   ori:'Osaka, Japão',          estilo:'Karatê kyokushin', cor:'#e8322b', fx:52, fy:42, stats:[4,3,3,5]},
-  {id:'rui',    nome:'Rui Brasa',     curto:'Rui',     ori:'Salvador, Brasil',      estilo:'Capoeira',         cor:'#ffcf1a', fx:54, fy:46, stats:[3,5,4,4]},
-  {id:'mara',   nome:'Mara Okafor',   curto:'Mara',    ori:'Lagos, Nigéria',        estilo:'Dambe',            cor:'#ff7a1a', fx:55, fy:40, stats:[5,3,4,3]},
-  {id:'tombo',  nome:'Tombo Reyes',   curto:'Tombo',   ori:'Cidade do México',      estilo:'Lucha libre',      cor:'#ff2d8a', fx:56, fy:34, stats:[5,2,3,4]},
-  {id:'sasha',  nome:'Sasha Volkova', curto:'Sasha',   ori:'Murmansk, Rússia',      estilo:'Sambo',            cor:'#2f6bff', fx:48, fy:40, stats:[4,3,3,5]},
-  {id:'leilani',nome:'Leilani Kahale',curto:'Leilani', ori:'Honolulu, Havaí',       estilo:'Lua',              cor:'#3fbf5f', fx:52, fy:42, stats:[3,4,5,3]},
-  {id:'arjun',  nome:'Arjun Rao',     curto:'Arjun',   ori:'Kerala, Índia',         estilo:'Kalaripayattu',    cor:'#8a3ffc', fx:54, fy:42, stats:[3,4,5,4]},
-  {id:'bora',   nome:'Bo-ra Han',     curto:'Bo-ra',   ori:'Busan, Coreia do Sul',  estilo:'Taekwondo',        cor:'#29d3ff', fx:52, fy:40, stats:[3,5,3,4]},
+  {id:'blindado',  nome:'Blindado DJ',     curto:'Blindado',  ori:'Paredão de som',     estilo:'Passinho blindado',  cor:'#d4a017', fx:50, fy:38, stats:[5,3,3,4]},
+  {id:'bolsonaro', nome:'Bolsonaro',       curto:'Bolsonaro', ori:'Arquibancada',       estilo:'Marcha batida',      cor:'#2fa84f', fx:50, fy:32, stats:[4,3,4,3]},
+  {id:'davi',      nome:'Davi Brito',      curto:'Davi',      ori:'Casa mais vigiada',  estilo:'Jogo de cintura',    cor:'#ff7a1a', fx:50, fy:35, stats:[4,4,3,4]},
+  {id:'katniss',   nome:'Katniss',         curto:'Katniss',   ori:'Distrito 12',        estilo:'Arco e flecha',      cor:'#5d6d7e', fx:50, fy:33, stats:[3,5,5,4]},
+  {id:'lactea',    nome:'Láctea',          curto:'Láctea',    ori:'Academia 24 horas',  estilo:'Supino sorridente',  cor:'#19c3b2', fx:50, fy:33, stats:[5,2,3,3]},
+  {id:'lula',      nome:'Lula',            curto:'Lula',      ori:'Torno mecânico',     estilo:'Queda de braço',     cor:'#e8322b', fx:50, fy:40, stats:[4,2,4,5]},
+  {id:'poze',      nome:'MC Poze do Rodo', curto:'Poze',      ori:'Baile do Rodo',      estilo:'Corre de grau',      cor:'#c9ccd3', fx:50, fy:35, stats:[3,5,3,4]},
+  {id:'michael',   nome:'Michael Scott',   curto:'Michael',   ori:'Escritório de papel',estilo:'Abraço corporativo', cor:'#2f6bff', fx:50, fy:33, stats:[2,3,4,2]},
+  {id:'neymar',    nome:'Neymar Jr',       curto:'Neymar',    ori:'Beira do gramado',   estilo:'Drible e cai',       cor:'#ffd400', fx:50, fy:35, stats:[3,5,4,5]},
+  {id:'mentalista',nome:'O Mentalista',    curto:'Mentalista',ori:'Sala de interrogatório', estilo:'Leitura de corpo', cor:'#4aa8ff', fx:50, fy:33, stats:[2,4,4,5]},
+  {id:'pastor',    nome:'Pastor Mirim',    curto:'Pastor',    ori:'Púlpito',            estilo:'Oração em pé',       cor:'#1f7a8c', fx:50, fy:33, stats:[3,3,4,4]},
+  {id:'rumpel',    nome:'Rumpelstiltskin', curto:'Rumpel',    ori:'Pântano de Shrek',   estilo:'Contrato rasteiro',  cor:'#7ac943', fx:50, fy:38, stats:[2,4,3,5]},
+  {id:'vini',      nome:'Vini Jr',         curto:'Vini',      ori:'Ponta esquerda',     estilo:'Pedalada',           cor:'#8a3ffc', fx:50, fy:33, stats:[3,5,4,4]},
+  {id:'virginia',  nome:'Virgínia',        curto:'Virgínia',  ori:'Live das 20h',       estilo:'Dancinha de corte',  cor:'#ff2d8a', fx:50, fy:33, stats:[3,4,3,4]},
 ];
 const ROTULOS = ['Força', 'Velocidade', 'Alcance', 'Técnica'];
 const arte = (f) => `img/${f.id}.webp`;
@@ -36,7 +42,7 @@ const CONF_MIN        = 0.4;
 const J1 = '#f5c542', J2 = '#ec5ca0';
 
 const T_CONFIRMA = 1.2;    // segundos com os dois bracos no alto
-const T_REPETE   = 420;    // ms entre trocas enquanto o braco fica no alto
+const T_REPETE   = 320;    // ms entre trocas enquanto o braco fica no alto
 const T_PRONTOS  = 2000;   // ms na tela "PRONTOS!" antes da partida
 
 const OSSOS = [[5,6],[5,7],[7,9],[6,8],[8,10],[5,11],[6,12],[11,12],
@@ -67,7 +73,7 @@ let prontosEm = 0, tAnterior = 0;
 
 const P = [
   { cur: 0, travado: false, conf: 0, ultimoMov: 0 },
-  { cur: 3, travado: false, conf: 0, ultimoMov: 0 },
+  { cur: 7, travado: false, conf: 0, ultimoMov: 0 },
 ];
 
 const captura = document.createElement('canvas');
@@ -1091,6 +1097,9 @@ let czTimer = null, czFila = null;
 function cartaz(op) {
   const { texto, sub = '', cor = '#00e5ff', retrato = null, cheio = false, dur = 1600 } = op;
   elCartaz.style.setProperty('--cz', cor);
+  // mesmo cálculo da faixa de vez: com 14 lutadores as cores vão de amarelo
+  // claro a cinza escuro, e texto fixo some numa das pontas
+  elCartaz.style.setProperty('--cz-txt', contraste(cor));
   elCartaz.classList.toggle('cheio', cheio);
   elCartaz.classList.remove('escondido');
   const img = $('#cz-retrato');

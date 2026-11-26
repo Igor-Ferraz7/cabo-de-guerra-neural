@@ -49,13 +49,24 @@ fonte continue sob OFL e o aviso de copyright acompanhe os arquivos.
 
 ## Arte dos lutadores
 
-`web/img/*.webp` — os oito retratos vieram do protótipo "Punho de Nanquim",
-feito pela própria equipe. Lutadores, nomes e estilos são originais, criados
-para aquele protótipo.
+`web/img/*.webp` — catorze retratos, trocados em 26/11. Substituíram os oito
+personagens originais do protótipo "Punho de Nanquim".
 
-> **A conferir:** se as imagens foram geradas por alguma ferramenta de IA, vale
-> registrar qual, porque é pergunta provável na apresentação e porque a
-> condição de uso de cada ferramenta é diferente.
+> **Atenção, e isto mudou de 25 para 26/11:** vários destes retratos são
+> **caricaturas de pessoas reais e identificáveis** — políticos, atletas,
+> personalidades de TV e internet —, junto de personagens de ficção.
+>
+> Enquanto o projeto rodava só no notebook, isso não tinha consequência
+> nenhuma. **Agora o repositório é público**, por causa da AGPL da Ultralytics,
+> e o jogo vai ser apresentado num evento aberto. Caricatura de figura pública
+> em trabalho acadêmico sem fim comercial costuma ser tolerada, mas é uma
+> decisão consciente da equipe, não um detalhe.
+>
+> Dois pontos a ter resposta pronta na apresentação:
+>
+> 1. **como a arte foi produzida** (qual ferramenta, se foi gerada por IA);
+> 2. **por que estes personagens** — inclusive a leitura que o público pode
+>    fazer de duas figuras políticas em lados opostos de um cabo de guerra.
 
 ## Template do banner
 
