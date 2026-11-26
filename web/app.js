@@ -654,6 +654,9 @@ function atualizarHUD() {
 
   const g = dados.jogo;
   verificarEventos(g);
+  const emTurno = ['prepara', 'pose', 'copia', 'resultado'].includes(g.estado);
+  $('#pilula').textContent = 'RODADA 2 · ESPELHO'
+    + (emTurno && g.turnos ? ` · TURNO ${g.turno}/${g.turnos}` : '');
   const n = dados.jogadores.length;
   const lid = g.lider, cop = 1 - g.lider;
   const restante = g.restante === null ? null
@@ -693,9 +696,17 @@ function atualizarHUD() {
     } else {
       dica = g.msg;
     }
+  } else if (g.estado === 'fim_rodada') {
+    const r = g.ultimaRodada || {};
+    quem = (r.vencedor === 0 || r.vencedor === 1) ? r.vencedor : null;
+    titulo = quem === null ? 'RODADA EMPATADA' : 'LEVA A RODADA!';
+    verSem = true; rotulo = 'PONTOS DA RODADA';
+    valor = (g.pontos || [0, 0]).join(' — ');
+    corValor = quem === null ? '' : classeDe(quem);
+    dica = quem === null ? 'a corda não anda' : `a corda anda ${r.passos} para o lado dele`;
   } else if (g.estado === 'fim') {
-    quem = g.corda < 0 ? 0 : 1;
-    titulo = 'VENCEU!';
+    quem = (g.vencedor === 0 || g.vencedor === 1) ? g.vencedor : null;
+    titulo = quem === null ? 'EMPATE!' : 'VENCEU!';
     dica = 'ESPAÇO joga de novo · ESC troca de lutador';
   }
 
@@ -986,8 +997,22 @@ function verificarEventos(g) {
     const f = LUTADORES[P[g.ultimo.vencedor].cur];
     cartaz({ texto: '+' + g.ultimo.pts, sub: 'PARA ' + f.nome.toUpperCase(),
              cor: f.cor, retrato: arte(f), dur: 1700 });
+  } else if (g.estado === 'fim_rodada') {
+    const r = g.ultimaRodada || {};
+    if (r.vencedor === 0 || r.vencedor === 1) {
+      const f = LUTADORES[P[r.vencedor].cur];
+      cartaz({ texto: 'ESPELHO', sub: `${f.nome.toUpperCase()} LEVA A RODADA`,
+               cor: f.cor, retrato: arte(f), cheio: true, dur: 2200 });
+    } else {
+      cartaz({ texto: 'EMPATE', sub: 'A CORDA NÃO ANDA',
+               cor: '#ffe14d', cheio: true, dur: 2000 });
+    }
   } else if (g.estado === 'fim') {
-    const venc = g.corda < 0 ? 0 : 1;
+    const venc = (g.vencedor === 0 || g.vencedor === 1) ? g.vencedor : null;
+    if (venc === null) {
+      cartaz({ texto: 'EMPATE!', cor: '#ffe14d', cheio: true, dur: 2600 });
+      return;
+    }
     const f = LUTADORES[P[venc].cur];
     cartaz({ texto: 'K.O.!', cor: '#ff2d8a', cheio: true, dur: 1100 });
     clearTimeout(czFila);

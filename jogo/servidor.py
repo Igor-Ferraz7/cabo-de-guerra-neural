@@ -107,11 +107,30 @@ def semelhanca(kp_a, cf_a, kp_b, cf_b):
 
 # ---------------------------------------------------------------- jogo
 class Jogo:
-    LIMITE = 4          # passos até a vitória
+    """A partida é feita de RODADAS, e a corda anda uma vez por rodada.
+
+    A versão anterior puxava a corda a cada turno do Espelho e tratava essa
+    rodada como a partida inteira — herança do protótipo. Isso não terminava:
+    como os papéis se alternam e quem copia quase sempre ganha, a corda ficava
+    indo e voltando. Medido com bots: 21 de 30 partidas não acabavam, e as que
+    acabavam passavam de 2 minutos só nesta rodada, com o orçamento do
+    visitante inteiro sendo 2 minutos.
+
+    Agora o Espelho tem 2 turnos fixos (uma pose para cada), o vencedor é quem
+    somou mais pontos, e aí sim a corda anda.
+    """
+
+    LIMITE = 4          # passos até a ponta da corda
+    TURNOS_ESPELHO = 2  # uma pose para cada jogador
+
+    # quanto cada rodada puxa a corda. Somam 4, que é o limite: quem ganhar as
+    # três leva a corda até a ponta.
+    PASSOS = {"faroeste": 1, "espelho": 1, "polichinelo": 2}
+
     # tempos em segundos. Subiram bastante depois do primeiro teste com gente
     # de verdade: 3 s para montar a pose e 4 s para copiar era corrido demais.
     # Dá para ajustar na linha de comando sem mexer no código.
-    T_PREPARA, T_POSE, T_COPIA, T_RESULT = 4.0, 6.0, 8.0, 4.0
+    T_PREPARA, T_POSE, T_COPIA, T_RESULT, T_RODADA = 4.0, 6.0, 8.0, 4.0, 4.5
 
     def __init__(self):
         self.reset()
@@ -130,6 +149,12 @@ class Jogo:
         self.janela = []        # notas dos ultimos quadros, para suavizar
         self.msg_result = ""
         self.ultimo_ponto = None   # {"vencedor": 0|1, "pts": n} da ultima pontuacao
+        self.rodada = "espelho"    # faroeste / espelho / polichinelo
+        self.turno = 1             # turno dentro da rodada
+        self.pontos_rodada = [0, 0]
+        self.melhor_rodada = [0.0, 0.0]   # desempate da rodada
+        self.ultima_rodada = None  # {"vencedor", "passos", "pontos"}
+        self.vencedor = None       # quem ganhou a partida (None = empate)
 
     def ir(self, estado):
         self.estado, self.t0 = estado, time.time()
@@ -140,7 +165,8 @@ class Jogo:
 
     def duracao_atual(self):
         return {"prepara": self.T_PREPARA, "pose": self.T_POSE,
-                "copia": self.T_COPIA, "resultado": self.T_RESULT}.get(self.estado)
+                "copia": self.T_COPIA, "resultado": self.T_RESULT,
+                "fim_rodada": self.T_RODADA}.get(self.estado)
 
     def atualizar(self, jogadores, pausado=False):
         agora = time.time()
@@ -153,6 +179,11 @@ class Jogo:
             return
         e = self.estado
         if e in ("espera", "fim"):
+            return
+        if e == "fim_rodada":
+            # só mostra o resultado: não pode travar se alguém sair do quadro
+            if self.restante(self.T_RODADA) == 0:
+                self.encerrar()
             return
         if len(jogadores) < 2:
             return  # pausa enquanto alguém sai do quadro
@@ -183,13 +214,16 @@ class Jogo:
                 self.pontuar()
                 self.ir("resultado")
         elif e == "resultado" and self.restante(self.T_RESULT) == 0:
-            if abs(self.corda) >= self.LIMITE:
-                self.ir("fim")
+            if self.turno >= self.TURNOS_ESPELHO:
+                self.fechar_rodada()
+                self.ir("fim_rodada")
             else:
+                self.turno += 1
                 self.lider = 1 - self.lider
                 self.ir("prepara")
 
     def pontuar(self):
+        """Pontos do TURNO. A corda não anda aqui — anda no fim da rodada."""
         s = self.melhor
         copiador = 1 - self.lider
         if s >= 80:
@@ -198,12 +232,39 @@ class Jogo:
             vencedor, pts = copiador, 1
         else:
             vencedor, pts = self.lider, 1
-        self.corda += pts if vencedor == 1 else -pts
-        self.corda = max(-self.LIMITE, min(self.LIMITE, self.corda))
+        self.pontos_rodada[vencedor] += pts
+        self.melhor_rodada[copiador] = max(self.melhor_rodada[copiador], s)
         nome = "Amarelo" if vencedor == 0 else "Rosa"
-        self.msg_result = f"corda +{pts} para o {nome}"
+        self.msg_result = f"+{pts} ponto{'s' if pts > 1 else ''} para o {nome}"
         # a interface usa isto para montar o cartaz, em vez de ler a frase acima
         self.ultimo_ponto = {"vencedor": vencedor, "pts": pts}
+
+    def fechar_rodada(self):
+        """Soma os turnos, decide a rodada e aí sim puxa a corda."""
+        a, b = self.pontos_rodada
+        if a != b:
+            venc = 0 if a > b else 1
+        else:
+            # empate em pontos: desempata pela melhor cópia da rodada
+            ma, mb = self.melhor_rodada
+            venc = None if ma == mb else (0 if ma > mb else 1)
+        passos = self.PASSOS[self.rodada] if venc is not None else 0
+        if venc is not None:
+            self.corda += passos if venc == 1 else -passos
+            self.corda = max(-self.LIMITE, min(self.LIMITE, self.corda))
+        self.ultima_rodada = {"rodada": self.rodada, "vencedor": venc,
+                              "passos": passos, "pontos": list(self.pontos_rodada)}
+
+    def encerrar(self):
+        """Fim de partida. Empate na corda é decidido pela última rodada, que é
+        a de maior peso — convenção de jogo de luta: quem leva a última, leva."""
+        if self.corda != 0:
+            self.vencedor = 0 if self.corda < 0 else 1
+        elif self.ultima_rodada:
+            self.vencedor = self.ultima_rodada["vencedor"]
+        else:
+            self.vencedor = None
+        self.ir("fim")
 
 
 # ---------------------------------------------------------------- YOLO
@@ -409,6 +470,12 @@ def criar_app(args):
                         "segs": jogo.segs,
                         "segsMin": SEGS_MIN,
                         "ultimo": jogo.ultimo_ponto,
+                        "rodada": jogo.rodada,
+                        "turno": jogo.turno,
+                        "turnos": Jogo.TURNOS_ESPELHO,
+                        "pontos": list(jogo.pontos_rodada),
+                        "ultimaRodada": jogo.ultima_rodada,
+                        "vencedor": jogo.vencedor,
                         "msg": jogo.msg_result,
                         "alvo": (pose_para_json(jogo.alvo[0], jogo.alvo[1], W, H)
                                  if jogo.alvo is not None else None),

@@ -241,9 +241,18 @@ Os bots acharam quatro coisas em uma tarde:
 3. **A nota premiava quem tremia.** Era o máximo de um quadro solto na janela de cópia: quem se mexia acertava um quadro por sorte. Agora é o máximo de uma **média de 5 quadros seguidos** (`JANELA_POSE`). A etapa se chama "segure a pose".
 4. **A partida não termina.** Ver abaixo — é decisão de regra, não bug.
 
-**A partida do Espelho não acaba (em aberto).** Como os papéis se alternam a cada turno e quem copia quase sempre ganha, a corda fica indo e voltando entre +2 e 0. Medido: **21 de 30 partidas** não chegam ao fim em 400 s simulados. E mesmo as que terminam levam 6+ turnos × 22 s = mais de 2 minutos **só nesta rodada**, enquanto o orçamento do visitante inteiro é de 2 minutos.
+**A partida é feita de RODADAS, e a corda anda uma vez por rodada** (decidido e implementado em 26/11).
 
-Proposta a decidir: o Espelho passa a ter **número fixo de turnos** (2, um para cada), o vencedor da rodada é quem somou mais pontos, e a corda anda **por rodada**, não por turno — que é como o CLAUDE.md descreve o jogo desde o começo. Aí a partida é Faroeste + Espelho + Polichinelo e cabe no tempo.
+O código anterior puxava a corda a cada turno do Espelho e tratava essa rodada como a partida inteira — herança do protótipo. Não terminava: com os papéis alternando e quem copia quase sempre ganhando, a corda ficava indo e voltando. Medido com bots: **21 de 30 partidas** não acabavam em 400 s, e as que acabavam passavam de 2 minutos só nesta rodada, com o orçamento do visitante inteiro sendo 2 minutos.
+
+- `TURNOS_ESPELHO = 2`: uma pose para cada jogador. Os pontos do turno vão para `pontos_rodada`; a corda **não** anda no turno.
+- No fim da rodada, quem somou mais pontos leva. Empate em pontos desempata pela melhor cópia da rodada.
+- `PASSOS = {faroeste: 1, espelho: 1, polichinelo: 2}`. Somam 4, que é o `LIMITE`: quem ganhar as três leva a corda até a ponta.
+- Estado novo `fim_rodada` (4,5 s) mostra o placar e avança **mesmo sem duas pessoas no quadro** — senão travaria se alguém saísse depois do último turno.
+- Empate na corda ao fim da partida é decidido pela **última rodada**, que é a de maior peso. Convenção de jogo de luta: quem leva a última, leva.
+- `encerrar()` é o ponto onde Faroeste e Polichinelo vão se encadear.
+
+Medido depois da mudança: **todas as partidas terminam**, mediana de 2 turnos e **49 s**. Bot com precisão 0,85 ganha de 0,60 por 52 a 8 em 60 partidas. Com as três rodadas, a partida deve fechar perto de 90 s.
 
 **Sem cache.** O servidor manda `Cache-Control: no-store` em tudo. Sem isso o navegador continuava rodando o `app.js` antigo depois de editar o arquivo — o sintoma é "mudei o código e nada aconteceu".
 
