@@ -104,18 +104,18 @@ class Jogo:
         self.corda = 0          # negativo = lado Amarelo, positivo = lado Rosa
         self.lider = 0          # 0 = J1 (Amarelo), 1 = J2 (Rosa)
         self.t0 = time.time()
-        self.ultimo = time.time()
+        self.ultimo_tique = time.time()   # relógio da pausa
         self.alvo = None        # (kp, conf) da pose a copiar
         self.melhor = 0.0
         self.sim_atual = None
         self.pior = None
         self.segs = 0           # quantos segmentos entraram na ultima conta
         self.msg_result = ""
-        self.ultimo = None      # {"vencedor": 0|1, "pts": n} da ultima pontuacao
+        self.ultimo_ponto = None   # {"vencedor": 0|1, "pts": n} da ultima pontuacao
 
     def ir(self, estado):
         self.estado, self.t0 = estado, time.time()
-        self.ultimo = time.time()
+        self.ultimo_tique = time.time()
 
     def restante(self, dur):
         return max(0.0, dur - (time.time() - self.t0))
@@ -126,8 +126,8 @@ class Jogo:
 
     def atualizar(self, jogadores, pausado=False):
         agora = time.time()
-        dt = agora - self.ultimo
-        self.ultimo = agora
+        dt = agora - self.ultimo_tique
+        self.ultimo_tique = agora
         if pausado:
             # empurra o relógio da etapa junto com o tempo: a contagem congela
             # onde está e dá para olhar a tela com calma
@@ -175,7 +175,7 @@ class Jogo:
         nome = "Amarelo" if vencedor == 0 else "Rosa"
         self.msg_result = f"corda +{pts} para o {nome}"
         # a interface usa isto para montar o cartaz, em vez de ler a frase acima
-        self.ultimo = {"vencedor": vencedor, "pts": pts}
+        self.ultimo_ponto = {"vencedor": vencedor, "pts": pts}
 
 
 # ---------------------------------------------------------------- YOLO
@@ -323,7 +323,7 @@ def criar_app(args):
                         "pior": jogo.pior,
                         "segs": jogo.segs,
                         "segsMin": SEGS_MIN,
-                        "ultimo": jogo.ultimo,
+                        "ultimo": jogo.ultimo_ponto,
                         "msg": jogo.msg_result,
                         "alvo": (pose_para_json(jogo.alvo[0], jogo.alvo[1], W, H)
                                  if jogo.alvo is not None else None),
