@@ -182,3 +182,47 @@ ensinando uma pose errada:
 ```powershell
 py -3.12 jogo\figuras_tutorial.py
 ```
+
+## Som e animação
+
+A camada de efeitos (`web/fx/`) entrou em 27/11. Ela é **opcional**: o jogo
+funciona inteiro sem ela, porque o `app.js` só avisa o que aconteceu
+(`window.FX?.emit`) e quem anima é a camada.
+
+| Tecla | O que faz |
+|---|---|
+| `M` | liga e desliga o som |
+
+**Se aparecer `SOM: APERTE T` no canto**, o navegador ainda não liberou o
+áudio. Ele só libera depois de um clique ou uma tecla, e aqui a seleção é feita
+pelo **corpo** — dá para abrir o jogo e nunca tocar no teclado. O `T` de tela
+cheia, que quem monta o estande já aperta, resolve.
+
+Os sons são gerados, não baixados. Para reajustar algum, mude o número em
+`ferramentas/gerar_sons.py` e rode:
+
+```powershell
+py -3.12 ferramentas\gerar_sons.py
+```
+
+**O sinal do Faroeste não tem som, de propósito.** O tempo de reação é medido a
+partir do quadro em que o sinal aparece, e o cérebro reage a som antes de
+imagem. Som ali mudaria o que está sendo medido, e o barulho do salão deixaria
+a disputa injusta.
+
+### Conferir uma animação quadro a quadro
+
+Com o servidor de pé, abra **<http://localhost:8000/estudio.html?folha=troca>**.
+Ele monta a seleção sem câmera e sem partida, numa grade em que cada cópia está
+parada num instante diferente. A página inteira já é a folha de contato.
+
+| URL | O que mostra |
+|---|---|
+| `estudio.html?folha=troca` | a troca rápida em 7 instantes |
+| `estudio.html?folha=troca&t=0,0.04,0.08,0.12` | só os instantes pedidos |
+| `estudio.html?cena=troca&t=0.04` | uma cena só, grande |
+| `...&dir=-1` | a troca no sentido contrário |
+
+> **Com o painel do navegador escondido o `requestAnimationFrame` para**, o GSAP
+> congela e parece que nada anima. Antes de concluir que uma animação quebrou,
+> confira se a janela está à vista.
