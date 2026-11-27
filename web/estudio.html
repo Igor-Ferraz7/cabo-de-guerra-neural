@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estúdio de animação — Cabo de Guerra Neural</title>
+<link rel="stylesheet" href="estilo.css?v=3">
+<style>
+/* O estúdio monta a seleção SEM câmera e SEM servidor, para que qualquer cena
+   possa ser congelada num instante exato e fotografada. É o laço de
+   verificação do PLANO_ANIMACAO §8: o Claude Code não vê animação rodando,
+   vê imagens.
+
+   A FOLHA DE CONTATO é feita aqui dentro, numa grade de cópias da cena, cada
+   uma parada num instante diferente. Uma captura de tela da página INTEIRA já
+   é a folha. Sem Playwright e sem ffmpeg: nenhum dos dois está instalado nesta
+   máquina, e instalar um navegador de 150 MB a três dias da feira é risco que
+   não paga. */
+body.estudio {
+  background: #15131a; color: #fff8e7; padding: 18px 20px 40px;
+  min-height: 100vh; overflow: auto; cursor: default;
+}
+body.estudio #palco, body.estudio #modos { display: none; }
+.est-topo { font-family: Bangers, system-ui; font-size: 26px; letter-spacing: .05em; }
+.est-topo small { font-family: 'Open Sans', system-ui; font-size: 12px;
+  letter-spacing: 0; color: #a69fb5; display: block; margin-top: 2px; }
+.est-barra { margin: 12px 0 18px; font: 12px/1.5 'Open Sans', system-ui; color: #cfc8dd; }
+.est-barra a { color: #ffe14d; margin-right: 12px; }
+
+.folha { display: grid; gap: 14px 12px; }
+.cel { background: #0c0b10; border: 1px solid #2d2a36; padding: 8px; }
+.cel .rot {
+  font: 700 12px/1 'Open Sans', system-ui; color: #ffe14d;
+  margin-bottom: 6px; letter-spacing: .04em;
+}
+/* tamanho fixo por célula: as medidas do jogo são em vh/vmin e na grade
+   ficariam gigantes */
+.cel .lutador { width: 100%; }
+.cel .quadro { height: 250px; }
+.cel .roster { margin-top: 8px; }
+.cel .tile { aspect-ratio: 0.9; margin: 0; max-width: 90px; }
+.cel .tile .n { font-size: 8px; }
+.cel .marca { font-size: 8px; }
+.cel .stats { font-size: 10px; }
+.cel .placa .nome { font-size: 15px; }
+.cel .placa .meta { font-size: 9px; }
+.cel .tag { font-size: 14px; }
+.cel .trava { font-size: 18px; }
+.unica .quadro { height: 62vh; }
+.unica .lutador { width: min(420px, 40vw); }
+</style>
+</head>
+<body class="estudio selecionando">
+
+<div class="est-topo">ESTÚDIO
+  <small id="est-sub">montando…</small>
+</div>
+
+<div class="est-barra">
+  <a href="?folha=troca">folha: troca rápida</a>
+  <a href="?folha=troca&amp;dir=-1">folha: troca para a esquerda</a>
+  <a href="?cena=troca&amp;t=0.04">cena única: troca em 40 ms</a>
+  <span id="est-ajuda"></span>
+</div>
+
+<div id="palco-est"></div>
+
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/CustomEase.min.js"></script>
+<script type="module">
+import { preparar, prepararTiles, alvoTile, troca, revelacao, trava, destrava }
+  from './fx/selecao.js';
+
+/* Os retratos são lidos do disco por nome. O estúdio é ferramenta de
+   desenvolvimento: se um id mudar em app.js, troque aqui. */
+const ELENCO = [
+  { id: 'neymar',  nome: 'Neymar Jr',  ori: 'Beira do gramado', estilo: 'Drible e cai',   cor: '#ffd400', fx: 50, fy: 35, stats: [3,5,4,5] },
+  { id: 'katniss', nome: 'Katniss',    ori: 'Distrito 12',      estilo: 'Arco e flecha',  cor: '#5d6d7e', fx: 50, fy: 33, stats: [3,5,5,4] },
+  { id: 'lula',    nome: 'Lula',       ori: 'Torno mecânico',   estilo: 'Queda de braço', cor: '#e8322b', fx: 50, fy: 40, stats: [4,2,4,5] },
+  { id: 'virginia',nome: 'Virgínia',   ori: 'Live das 20h',     estilo: 'Dancinha de corte', cor: '#ff2d8a', fx: 50, fy: 33, stats: [3,4,3,4] },
+];
+const ROTULOS = ['FORÇA', 'VELOC', 'ALCANCE', 'TÉCNICA'];
+const arte = (f) => `img/${f.id}.webp`;
+
+const q = new URLSearchParams(location.search);
+const CENAS = { troca, revelacao, trava, destrava };
+
+/* O molde do painel vem do PRÓPRIO index.html, não de uma cópia colada aqui.
+   Assim o estúdio não pode divergir da tela de verdade. */
+async function molde() {
+  const txt = await (await fetch('index.html')).text();
+  const doc = new DOMParser().parseFromString(txt, 'text/html');
+  return {
+    lado: doc.querySelector('#sel1').outerHTML,
+    tile: doc.querySelector('#roster') ? '' : '',
+  };
+}
+
+function pintar(el, f) {
+  el.style.setProperty('--fc', f.cor);
+  const fig = el.querySelector('.fig');
+  fig.src = arte(f); fig.alt = f.nome;
+  el.querySelector('.nome').textContent = f.nome;
+  el.querySelector('.meta').textContent = `${f.ori} · ${f.estilo}`;
+  el.querySelector('.stats').innerHTML = f.stats.map((v, i) =>
+    `<div class="linha"><span>${ROTULOS[i]}</span><span class="barra">${
+      [0,1,2,3,4].map(k => `<i class="${k < v ? 'on' : ''}"></i>`).join('')}</span></div>`).join('');
+}
+
+/* Monta UMA célula: painel próprio, contexto próprio, timeline própria,
+   congelada no instante t. Nada é compartilhado entre células. */
+/* O ícone da grade é montado em JS pelo app.js, então não dá para puxá-lo do
+   index.html como o painel. Esta marcação é cópia da de lá — se mudar, muda
+   aqui. É o único ponto do estúdio que pode divergir. */
+const MOLDE_TILE = (f) => `<nav class="roster" style="grid-template-columns:1fr;width:auto">
+  <button class="tile c1" style="--fc:${f.cor}">
+    <span class="in"><img src="${arte(f)}" alt=""
+      style="object-position:${f.fx}% ${f.fy}%;transform:scale(1.75);transform-origin:${f.fx}% ${f.fy}%"></span>
+    <span class="marcas"><b class="marca m1">1P</b></span><span class="n">${f.nome}</span>
+  </button></nav>`;
+
+function celula(html, f, anterior, t, op) {
+  const cel = document.createElement('div');
+  cel.className = 'cel';
+  cel.innerHTML = `<div class="rot">${Math.round(t * 1000)} ms</div>`
+                + html + MOLDE_TILE(f);
+  const lado = cel.querySelector('.lutador');
+  lado.removeAttribute('id');
+  pintar(lado, f);
+
+  const ctx = preparar(lado);
+  const { tileIn, ruido } = alvoTile(prepararTiles(cel), 0);
+  const tl = CENAS[op.cena](ctx, {
+    dir: op.dir, arteDe: arte(anterior), som: false, tileIn, ruido,
+  });
+  /* Timeline criada pausada não renderiza ao buscar EXATAMENTE 0: os .set() do
+     instante zero ficam por aplicar e o primeiro quadro da folha sairia
+     mentindo. Um fio de segundo à frente resolve e não muda nenhum quadro. */
+  tl.time(Math.max(t, 0.001));
+  return cel;
+}
+
+(async function () {
+  const m = await molde();
+  const palco = document.getElementById('palco-est');
+  const cena = q.get('cena') || q.get('folha') || 'troca';
+  const dir = Number(q.get('dir') || 1);
+  const f = ELENCO[Number(q.get('i') || 0) % ELENCO.length];
+  const ant = ELENCO[(Number(q.get('i') || 0) + 1) % ELENCO.length];
+
+  if (!CENAS[cena]) { document.getElementById('est-sub').textContent = `cena '${cena}' não existe`; return; }
+
+  const padrao = { troca: '0,0.02,0.04,0.06,0.08,0.10,0.12', revelacao: '0,0.09,0.18,0.26,0.34,0.42,0.5,0.6' };
+  const lista = (q.get('t') || padrao[cena] || '0,0.1,0.2,0.3')
+    .split(',').map(Number).filter((x) => !Number.isNaN(x));
+
+  if (q.get('cena')) {
+    palco.className = 'unica';
+    palco.appendChild(celula(m.lado, f, ant, lista[0] || 0, { cena, dir }));
+    document.getElementById('est-sub').textContent =
+      `cena única · ${cena} · ${Math.round((lista[0] || 0) * 1000)} ms · sentido ${dir > 0 ? 'direita' : 'esquerda'}`;
+  } else {
+    palco.className = 'folha';
+    palco.style.gridTemplateColumns = `repeat(${Math.min(lista.length, 7)}, 1fr)`;
+    lista.forEach((t) => palco.appendChild(celula(m.lado, f, ant, t, { cena, dir })));
+    document.getElementById('est-sub').textContent =
+      `folha de contato · ${cena} · ${lista.length} quadros · sentido ${dir > 0 ? 'direita' : 'esquerda'}`;
+  }
+  document.getElementById('est-ajuda').textContent =
+    '?folha=cena&t=0,0.04,… para a folha · ?cena=… &t=… para uma só';
+  document.body.dataset.pronto = '1';
+})();
+</script>
+</body>
+</html>

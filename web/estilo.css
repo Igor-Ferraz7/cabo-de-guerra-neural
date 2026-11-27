@@ -660,3 +660,44 @@ body.configurando #video { filter: saturate(0.9) contrast(1.05) !important; }
 /* texto do cartaz segue a luminância da cor do personagem */
 #cz-texto { color: var(--cz-txt, #fff8e7); }
 #cz-sub { color: var(--cz-txt, #121015); opacity: 0.85; }
+
+/* ============================================================ camada de efeitos
+   Criada em JS por web/fx/selecao.js, uma vez, sobre o DOM que ja existia.
+   A .fig fica DENTRO da .fx-camada de proposito: a .fig carrega as animacoes
+   CSS `respira` e `entrou`, e animacao CSS ganha de estilo inline - o GSAP
+   mexendo no transform DELA seria ignorado enquanto o respira roda. Mexendo na
+   camada em volta, as duas convivem. */
+.quadro .fx-camada { position: absolute; inset: 0; pointer-events: none; }
+
+.quadro .fx-ant,
+.quadro .fx-sil {
+  position: absolute; bottom: 0; left: 50%; height: 100%; width: auto;
+  max-width: none; translate: -50% 0;
+  opacity: 0; visibility: hidden; pointer-events: none; user-select: none;
+}
+.l2 .quadro .fx-ant, .l2 .quadro .fx-sil { scale: -1 1; }
+
+/* a silhueta branca chapada do corte: sem desfoque, e corte seco */
+.quadro .fx-sil { filter: brightness(0) invert(1); }
+
+.quadro .fx-branco {
+  position: absolute; inset: 0; background: #fff;
+  opacity: 0; visibility: hidden; mix-blend-mode: screen;
+}
+
+/* estatica de TV no icone da grade, 2 quadros na troca */
+.tile .in { position: relative; }
+.tile .fx-ruido {
+  position: absolute; inset: 0; z-index: 2; opacity: 0; visibility: hidden;
+  mix-blend-mode: screen; background-size: 160% 160%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='64' height='64' filter='url(%23n)' opacity='0.75'/%3E%3C/svg%3E");
+}
+
+#fx-som-aviso {
+  position: fixed; right: 1.2vmin; bottom: 3.4vmin; z-index: 40;
+  font-family: Bangers, system-ui, sans-serif; font-size: 1.8vmin;
+  letter-spacing: 0.06em; color: var(--tinta, #121015);
+  background: var(--cap, #ffe14d); border: 3px solid #000;
+  padding: 0.3vmin 1vmin 0.1vmin; box-shadow: 4px 4px 0 #000;
+  display: none; pointer-events: none;
+}

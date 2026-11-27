@@ -43,6 +43,10 @@ const J1 = '#f5c542', J2 = '#ec5ca0';
 
 const T_CONFIRMA = 1.2;    // segundos com os dois bracos no alto
 const T_REPETE   = 320;    // ms entre trocas enquanto o braco fica no alto
+const T_PAROU    = 350;    // ms sem trocar antes de valer "o cursor parou"
+/* declarado aqui em cima de proposito: ja perdemos uma tela inteira com um
+   `let` de modulo lido antes da declaracao (zona morta temporal) */
+let cartazEntradaPendente = false;
 const T_PRONTOS  = 2000;   // ms na tela "PRONTOS!" antes da partida
 
 const OSSOS = [[5,6],[5,7],[7,9],[6,8],[8,10],[5,11],[6,12],[11,12],
@@ -72,8 +76,8 @@ let tela = 'selecao';           // 'selecao' | 'prontos' | 'partida'
 let prontosEm = 0, tAnterior = 0;
 
 const P = [
-  { cur: 0, travado: false, conf: 0, ultimoMov: 0 },
-  { cur: 7, travado: false, conf: 0, ultimoMov: 0 },
+  { cur: 0, travado: false, conf: 0, ultimoMov: 0, paradoEm: 0, revelado: false },
+  { cur: 7, travado: false, conf: 0, ultimoMov: 0, paradoEm: 0, revelado: false },
 ];
 
 const captura = document.createElement('canvas');
@@ -538,22 +542,34 @@ function pintarRoster() {
   elVez.style.color = falta === 0 ? J1 : falta === 1 ? J2 : 'var(--cap)';
 }
 
-function escolher(p, i) {
+/* A camada de efeitos (web/fx/) escuta estes eventos. Ela e OPCIONAL: todas as
+   chamadas sao `window.FX?.emit`, entao o jogo continua inteiro sem ela. */
+function escolher(p, i, dir) {
   if (P[p].travado || P[p].cur === i) return;
+  const de = P[p].cur;
+  const arteDe = arte(LUTADORES[de]);
   P[p].cur = (i + LUTADORES.length) % LUTADORES.length;
-  pintarLado(p, true); pintarRoster();
+  // com a camada de efeitos ligada, a animacao da troca e dela, nao do CSS
+  pintarLado(p, !(window.FX && window.FX.ativo)); pintarRoster();
+  P[p].paradoEm = performance.now(); P[p].revelado = false;
+  if (window.FX) window.FX.emit('sel:mover', { p, de, para: P[p].cur, dir: dir || 1, arteDe });
 }
-function mover(p, d) { escolher(p, (P[p].cur + d + LUTADORES.length) % LUTADORES.length); }
+function mover(p, d) { escolher(p, (P[p].cur + d + LUTADORES.length) % LUTADORES.length, d); }
 function travar(p) {
   if (P[p].travado) return;
   P[p].travado = true; P[p].conf = 0;
   pintarLado(p, false); pintarRoster();
-  if (P[0].travado && P[1].travado) { tela = 'prontos'; prontosEm = performance.now(); }
+  if (window.FX) window.FX.emit('sel:travou', { p, i: P[p].cur, cor: LUTADORES[P[p].cur].cor });
+  if (P[0].travado && P[1].travado) {
+    tela = 'prontos'; prontosEm = performance.now();
+    if (window.FX) window.FX.emit('sel:prontos', { a: P[0].cur, b: P[1].cur });
+  }
 }
 function destravar(p) {
   if (!P[p].travado || tela === 'partida') return;
   P[p].travado = false; tela = 'selecao'; prontosEm = 0;
   pintarLado(p, false); pintarRoster();
+  if (window.FX) window.FX.emit('sel:destravou', { p });
 }
 
 function maoCima(j, pulso, ombro) {
@@ -575,8 +591,10 @@ function selecaoPorCorpo(dt, agora) {
     if (esq && dir) {
       P[p].conf += dt;
       barra.style.width = `${Math.min(100, (P[p].conf / T_CONFIRMA) * 100)}%`;
+      if (window.FX) window.FX.emit('sel:carga', { p, k: Math.min(1, P[p].conf / T_CONFIRMA) });
       if (P[p].conf >= T_CONFIRMA) travar(p);
     } else {
+      if (P[p].conf > 0 && window.FX) window.FX.emit('sel:cancela', { p });
       P[p].conf = 0; barra.style.width = '0%';
       if (esq || dir) {
         if (agora - P[p].ultimoMov > T_REPETE) { mover(p, esq ? -1 : 1); P[p].ultimoMov = agora; }
@@ -591,6 +609,17 @@ function atualizarSelecao(dt, agora) {
   const n = dados ? dados.jogadores.length : 0;
   elSelAviso.textContent = aviso ? aviso : (n < 2 ? 'Entrem os dois no quadro' : '');
   if (!aviso) selecaoPorCorpo(dt, agora);
+
+  /* "parou" = T_PAROU sem trocar de lutador. E o gatilho da revelacao completa
+     (secao 3.2 do PLANO_ANIMACAO): enquanto o cursor anda, vale so a troca
+     rapida, que cabe nos 320 ms do gesto. */
+  for (let p = 0; p < 2; p++) {
+    const s = P[p];
+    if (s.paradoEm && !s.revelado && !s.travado && agora - s.paradoEm > T_PAROU) {
+      s.revelado = true;
+      if (window.FX) window.FX.emit('sel:parou', { p, i: s.cur });
+    }
+  }
 
   if (tela === 'prontos' && agora - prontosEm > T_PRONTOS) irParaPartida();
 }
@@ -613,12 +642,18 @@ function irParaPartida() {
   document.body.classList.remove('selecionando');
   enviarAcao('comecar');
   estadoAnt = null;
-  cartaz({ texto: 'RODADA 2', sub: 'ESPELHO', cor: '#ffe14d', cheio: true, dur: 1800 });
+  /* O cartaz de entrada ANUNCIAVA "RODADA 2 - ESPELHO" fixo, mas o servidor
+     comeca pelo Faroeste (ORDEM = ["faroeste", ...]). Aqui o cliente ainda nao
+     sabe qual rodada e: ele acabou de mandar 'comecar'. Entao o cartaz fica
+     pendente e sai em pintarRodada(), com a rodada que o servidor mandar. */
+  cartazEntradaPendente = true;
 }
 function voltarParaSelecao() {
   tela = 'selecao'; prontosEm = 0;
+  cartazEntradaPendente = false;
   P[0].travado = P[1].travado = false;
   P[0].conf = P[1].conf = 0;
+  P[0].revelado = P[1].revelado = false;
   elPartida.classList.add('escondido');
   elSelecao.classList.remove('escondido');
   document.body.classList.add('selecionando');
@@ -1071,6 +1106,10 @@ function mostrarSinal(sim) {
 
 function pintarRodada(g) {
   const r = RODADAS[g.rodada] || RODADAS.espelho;
+  if (cartazEntradaPendente && g.rodada) {
+    cartazEntradaPendente = false;
+    cartaz({ texto: `RODADA ${r.n}`, sub: r.nome, cor: '#ffe14d', cheio: true, dur: 1800 });
+  }
   const emTurno = ['prepara', 'pose', 'copia', 'resultado'].includes(g.estado);
   $('#pilula').textContent = `RODADA ${r.n} · ${r.nome}`
     + (emTurno && g.turnos ? ` · TURNO ${g.turno}/${g.turnos}` : '');
@@ -1095,6 +1134,7 @@ const elCartaz = $('#cartaz');
 let czTimer = null, czFila = null;
 
 function cartaz(op) {
+  if (window.FX) window.FX.emit(op && op.som === 'ko' ? 'ko' : 'cartaz', {});
   const { texto, sub = '', cor = '#00e5ff', retrato = null, cheio = false, dur = 1600 } = op;
   elCartaz.style.setProperty('--cz', cor);
   // mesmo cálculo da faixa de vez: com 14 lutadores as cores vão de amarelo
@@ -1153,7 +1193,7 @@ function verificarEventos(g) {
       return;
     }
     const f = LUTADORES[P[venc].cur];
-    cartaz({ texto: 'K.O.!', cor: '#ff2d8a', cheio: true, dur: 1100 });
+    cartaz({ texto: 'K.O.!', cor: '#ff2d8a', cheio: true, dur: 1100, som: 'ko' });
     clearTimeout(czFila);
     czFila = setTimeout(() => cartaz({
       texto: f.nome.toUpperCase(), sub: 'VENCEU!', cor: f.cor,
