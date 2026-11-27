@@ -226,3 +226,13 @@ parada num instante diferente. A página inteira já é a folha de contato.
 > **Com o painel do navegador escondido o `requestAnimationFrame` para**, o GSAP
 > congela e parece que nada anima. Antes de concluir que uma animação quebrou,
 > confira se a janela está à vista.
+
+As cenas prontas no estúdio:
+
+| URL | Cena |
+|---|---|
+| `?folha=troca` | troca rápida (3.1) |
+| `?folha=revelacao` | revelação completa (3.2) |
+| `?folha=carga` | carga da confirmação (3.3) — por `k`, de 0 a 1 |
+| `?folha=trava` | confirmação (3.4) |
+| `?folha=destrava` | desfazer a confirmação (3.5) |
