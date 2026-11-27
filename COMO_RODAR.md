@@ -236,3 +236,4 @@ As cenas prontas no estúdio:
 | `?folha=carga` | carga da confirmação (3.3) — por `k`, de 0 a 1 |
 | `?folha=trava` | confirmação (3.4) |
 | `?folha=destrava` | desfazer a confirmação (3.5) |
+| `?folha=vinheta` | entrada na partida (4) — tela inteira, em 3 colunas |
