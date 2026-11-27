@@ -57,10 +57,12 @@ body.estudio #palco, body.estudio #modos { display: none; }
 </div>
 
 <div class="est-barra">
-  <a href="?folha=troca">folha: troca rápida</a>
-  <a href="?folha=revelacao">folha: revelação</a>
-  <a href="?folha=troca&amp;dir=-1">folha: troca para a esquerda</a>
-  <a href="?cena=revelacao&amp;t=0.3">cena única: revelação em 300 ms</a>
+  <a href="?folha=troca">troca</a>
+  <a href="?folha=revelacao">revelação</a>
+  <a href="?folha=carga">carga</a>
+  <a href="?folha=trava">trava</a>
+  <a href="?folha=destrava">destrava</a>
+  <a href="?cena=revelacao&amp;t=0.3">uma só: revelação em 300 ms</a>
   <span id="est-ajuda"></span>
 </div>
 
@@ -69,7 +71,7 @@ body.estudio #palco, body.estudio #modos { display: none; }
 <script src="vendor/gsap.min.js"></script>
 <script src="vendor/CustomEase.min.js"></script>
 <script type="module">
-import { preparar, prepararTiles, alvoTile, troca, revelacao, trava, destrava }
+import { preparar, prepararTiles, alvoTile, troca, revelacao, trava, destrava, carga }
   from './fx/selecao.js';
 
 /* Os retratos são lidos do disco por nome. O estúdio é ferramenta de
@@ -84,7 +86,7 @@ const ROTULOS = ['FORÇA', 'VELOC', 'ALCANCE', 'TÉCNICA'];
 const arte = (f) => `img/${f.id}.webp`;
 
 const q = new URLSearchParams(location.search);
-const CENAS = { troca, revelacao, trava, destrava };
+const CENAS = { troca, revelacao, trava, destrava, carga };
 
 /* O molde do painel vem do PRÓPRIO index.html, não de uma cópia colada aqui.
    Assim o estúdio não pode divergir da tela de verdade. */
@@ -120,17 +122,35 @@ const MOLDE_TILE = (f) => `<nav class="roster" style="grid-template-columns:1fr;
     <span class="marcas"><b class="marca m1">1P</b></span><span class="n">${f.nome}</span>
   </button></nav>`;
 
-function celula(html, f, anterior, t, op) {
+/* `palco` entra aqui porque a célula precisa estar NO DOCUMENTO antes de a cena
+   ser montada: o canvas das faíscas se dimensiona pelo tamanho real, e fora do
+   documento ele mede zero — as faíscas simplesmente não eram desenhadas. */
+function celula(palco, html, f, anterior, t, op) {
   const cel = document.createElement('div');
   cel.className = 'cel';
-  cel.innerHTML = `<div class="rot">${Math.round(t * 1000)} ms</div>`
+  palco.appendChild(cel);
+  /* a carga não é timeline: é função de k (0 a 1). O princípio é o mesmo —
+     o que a tela mostra depende só do parâmetro — então ela também congela. */
+  const porK = op.cena === 'carga';
+  cel.innerHTML = `<div class="rot">${porK ? 'k = ' + t.toFixed(2)
+                                           : Math.round(t * 1000) + ' ms'}</div>`
                 + html + MOLDE_TILE(f);
   const lado = cel.querySelector('.lutador');
   lado.removeAttribute('id');
   pintar(lado, f);
+  if (op.cena === 'trava' || op.cena === 'destrava') lado.classList.add('pronto');
 
   const ctx = preparar(lado);
   const { tileIn, ruido } = alvoTile(prepararTiles(cel), 0);
+
+  if (porK) {
+    // a barra de confirmação é pintada pelo app.js; aqui ela acompanha o k
+    const barra = lado.querySelector('.conf i');
+    if (barra) barra.style.width = `${Math.round(t * 100)}%`;
+    carga(ctx, t);
+    return cel;
+  }
+
   const tl = CENAS[op.cena](ctx, {
     dir: op.dir, arteDe: arte(anterior), som: false, tileIn, ruido,
     arte: arte(f), fx: f.fx, fy: f.fy, cor: f.cor,
@@ -152,19 +172,25 @@ function celula(html, f, anterior, t, op) {
 
   if (!CENAS[cena]) { document.getElementById('est-sub').textContent = `cena '${cena}' não existe`; return; }
 
-  const padrao = { troca: '0,0.02,0.04,0.06,0.08,0.10,0.12', revelacao: '0,0.09,0.18,0.26,0.34,0.42,0.5,0.6' };
+  const padrao = {
+    troca: '0,0.02,0.04,0.06,0.08,0.10,0.12',
+    revelacao: '0,0.09,0.18,0.26,0.34,0.42,0.5,0.6',
+    carga: '0,0.2,0.4,0.6,0.8,1',
+    trava: '0,0.08,0.12,0.17,0.24,0.3,0.4',
+    destrava: '0,0.04,0.08,0.12,0.2',
+  };
   const lista = (q.get('t') || padrao[cena] || '0,0.1,0.2,0.3')
     .split(',').map(Number).filter((x) => !Number.isNaN(x));
 
   if (q.get('cena')) {
     palco.className = 'unica';
-    palco.appendChild(celula(m.lado, f, ant, lista[0] || 0, { cena, dir }));
+    celula(palco, m.lado, f, ant, lista[0] || 0, { cena, dir });
     document.getElementById('est-sub').textContent =
       `cena única · ${cena} · ${Math.round((lista[0] || 0) * 1000)} ms · sentido ${dir > 0 ? 'direita' : 'esquerda'}`;
   } else {
     palco.className = 'folha';
     palco.style.gridTemplateColumns = `repeat(${Math.min(lista.length, 7)}, 1fr)`;
-    lista.forEach((t) => palco.appendChild(celula(m.lado, f, ant, t, { cena, dir })));
+    lista.forEach((t) => celula(palco, m.lado, f, ant, t, { cena, dir }));
     document.getElementById('est-sub').textContent =
       `folha de contato · ${cena} · ${lista.length} quadros · sentido ${dir > 0 ? 'direita' : 'esquerda'}`;
   }

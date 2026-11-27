@@ -435,3 +435,62 @@ Ao vivo: `sel:mover` → troca rápida → 350 ms parado → `sel:parou` → rev
 - **Os sons.** O painel do navegador bloqueia áudio: `whoosh` e `impacto` estão ligados nos instantes certos, mas ninguém os ouviu.
 - **O ritmo real:** 14 passos seguidos a 320 ms com o braço levantado, e a revelação sendo cortada no meio por uma troca nova.
 - **FPS no notebook da feira.**
+
+---
+
+## 15. Carga, trava e destrava (3.3, 3.4, 3.5) — 27/11
+
+### Medido na folha e ao vivo
+
+**Carga (3.3)** — não é timeline, é **função de k**. O princípio é o mesmo das cenas: o que a tela mostra depende só do parâmetro, então ela também congela (`estudio.html?folha=carga`).
+
+| k | tremor da camada | faíscas pintadas |
+|---|---|---|
+| 0,00 | 0 px | 0 |
+| 0,35 | 0,3 px | 59 |
+| 0,70 | 1,8 px | 131 |
+| 1,00 | 4,1 px | 333 |
+
+O tremor cresce **quadraticamente** (`6·k²`), não linear: no começo quase não se nota, e é no fim que ele diz "não baixa o braço agora".
+
+**Trava (3.4)**, ao vivo, com a tecla `F`:
+
+| t | medido |
+|---|---|
+| 98 ms | flash branco |
+| 179 ms | faixa visível em `rgb(212,160,23)` — a cor do **Blindado DJ**, o lutador que estava selecionado, não um valor fixo |
+| 251 ms | faixa ainda subindo, painel tremendo |
+| 320 ms | carimbo `PRONTO!` visível em escala **1,58** |
+| 459 ms | tudo assentado |
+
+**Destrava (3.5)**: a faixa volta no sentido contrário e some em ~300 ms, sem golpe.
+
+### Três correções que a folha de contato pegou
+
+**O flash branco engolia a varrida.** "2 quadros" a 12 por segundo dá 166 ms; somados aos 80 ms de início, o branco ia até 246 ms e cobria a varrida inteira (que começa aos 160). **Metade da coreografia saía branca e a cor do lutador nunca aparecia.** A trava passou a usar passo de **40 ms**, o mesmo da troca rápida: o flash acaba exatamente quando a varrida começa.
+
+> A tabela da §3.4 é internamente inconsistente neste ponto — ela manda o flash durar 2 quadros a partir dos 80 ms **e** a varrida começar aos 160. Os dois não cabem. Prevaleceu a ordem dos eventos.
+
+**O carimbo não batia.** O plano dizia para reaproveitar a animação CSS `carimbo` atrasada para os 300 ms. Cortar e devolver a propriedade `animation` **não reinicia** a animação: o nome não mudou, então o navegador não vê motivo para recomeçar, e o carimbo aparecia parado. A batida passou a ser feita em passos pela própria timeline (1,6 → 1,2 → 1).
+
+**O canvas das faíscas media zero.** No estúdio a célula era montada **fora do documento** e só depois inserida; um canvas fora do documento tem largura zero, e as faíscas simplesmente não eram desenhadas. A célula agora entra no documento antes de a cena ser montada. No jogo isso nunca aconteceria — os elementos já estão na página.
+
+### Uma descoberta sobre o navegador de teste
+
+O painel do navegador roda com **`prefers-reduced-motion: reduce`**, e o `estilo.css` tem:
+
+```css
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+```
+
+Ou seja: naquele navegador **nenhuma animação CSS do projeto roda** — nem o `respira`, nem os raios, nem o carimbo. Duas consequências:
+
+1. **O hitstop da trava não pôde ser verificado.** Ele pausa animações CSS por 80 ms, e ali não há animação CSS para pausar. O código está certo em princípio, mas ninguém viu funcionar.
+2. **As timelines do GSAP não respeitam essa preferência.** Numa máquina com movimento reduzido, o visitante hoje receberia as coreografias mas não o `respira`. No notebook da feira não muda nada; fica anotado caso alguém rode em outra máquina.
+
+### O que continua sem teste
+
+- **Todos os sons.** O painel do navegador bloqueia áudio. `tic`, `whoosh`, `impacto`, `trava` e `carga` estão nos instantes certos, mas ninguém ouviu nenhum.
+- **A carga disparada por gesto de verdade.** O `k` vem do `app.js` contando o tempo com os dois braços no alto, e isso precisa de câmera. Só a função que desenha foi conferida, ponto a ponto.
+- **O ritmo real** de 14 passos seguidos a 320 ms.
+- **FPS no notebook da feira.**

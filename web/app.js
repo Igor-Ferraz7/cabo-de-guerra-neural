@@ -569,7 +569,7 @@ function destravar(p) {
   if (!P[p].travado || tela === 'partida') return;
   P[p].travado = false; tela = 'selecao'; prontosEm = 0;
   pintarLado(p, false); pintarRoster();
-  if (window.FX) window.FX.emit('sel:destravou', { p });
+  if (window.FX) window.FX.emit('sel:destravou', { p, cor: LUTADORES[P[p].cur].cor });
 }
 
 function maoCima(j, pulso, ombro) {

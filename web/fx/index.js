@@ -43,15 +43,20 @@ const MANEJO = {
   'sel:carga': (d) => S.carga(lados[d.p], d.k),
   'sel:cancela': (d) => S.cargaCancela(lados[d.p]),
 
+  /* o som da trava sai DE DENTRO da timeline, no instante 0: tocar aqui
+     tambem daria dois golpes sobrepostos */
   'sel:travou': (d) => {
-    SOM.tocar('trava', 0.7);
     const ctx = lados[d.p];
-    if (ctx) tocar(`sel${d.p}`, S.trava(ctx, d));
+    if (!ctx) return;
+    limpar(ctx);
+    tocar(`sel${d.p}`, S.trava(ctx, d));
   },
 
   'sel:destravou': (d) => {
     const ctx = lados[d.p];
-    if (ctx) tocar(`sel${d.p}`, S.destrava(ctx, d));
+    if (!ctx) return;
+    limpar(ctx);
+    tocar(`sel${d.p}`, S.destrava(ctx, d));
   },
 
   'sel:prontos': () => { },                       // vinheta: sabado (secao 4)
@@ -79,7 +84,7 @@ export const FX = {
       return S.troca(ctx, { ...op, tileIn, ruido, som: false });
     }
     if (nome === 'revelacao') return S.revelacao(ctx, { ...op, som: false });
-    if (nome === 'trava') return S.trava(ctx, op);
+    if (nome === 'trava') return S.trava(ctx, { ...op, som: false });
     if (nome === 'destrava') return S.destrava(ctx, op);
     return gsap.timeline({ paused: true });
   },

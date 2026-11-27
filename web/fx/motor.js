@@ -33,15 +33,15 @@ export function corte(tl, el, visivel, t) {
 
 /* tremor em passos. Todos os deslocamentos sao calculados na MONTAGEM da
    timeline, nao durante a reproducao: por isso continua igual ao ser scrubado. */
-export function tremor(tl, el, px, dur, t0 = 0, semente = 1) {
+export function tremor(tl, el, px, dur, t0 = 0, semente = 1, passo = Q) {
   if (!el) return tl;
-  const n = Math.max(1, Math.round(dur / Q));
+  const n = Math.max(1, Math.round(dur / passo));
   const r = sorteio(semente);
   for (let i = 0; i < n; i++) {
     const k = 1 - i / n;                       // decai ate zero
-    tl.set(el, { x: (r() * 2 - 1) * px * k, y: (r() * 2 - 1) * px * k }, t0 + i * Q);
+    tl.set(el, { x: (r() * 2 - 1) * px * k, y: (r() * 2 - 1) * px * k }, t0 + i * passo);
   }
-  tl.set(el, { x: 0, y: 0 }, t0 + n * Q);
+  tl.set(el, { x: 0, y: 0 }, t0 + n * passo);
   return tl;
 }
 
@@ -92,13 +92,21 @@ export function viva(chave) { return vivas.get(chave) || null; }
    uma cena nova, para nao herdar meio quadro da anterior que foi morta. */
 export function limpar(ctx) {
   if (!ctx) return;
-  const { camada, fig, ant, cinza, hachura, faixa, sil, branco, placa } = ctx;
+  const { camada, fig, ant, cinza, hachura, faixa, sil, branco, faiscas,
+          placa, carimbo, tag } = ctx;
   gsap.set([camada].filter(Boolean), { clearProps: 'transform,transformOrigin' });
   const nome = ctx.el && ctx.el.querySelector('.placa .nome');
-  gsap.set([placa, nome].filter(Boolean),
+  gsap.set([placa, nome, tag].filter(Boolean),
     { clearProps: 'transform,transformOrigin,textShadow' });
-  gsap.set([ant, cinza, hachura, faixa, sil, branco].filter(Boolean), { autoAlpha: 0 });
+  gsap.set([ant, cinza, hachura, faixa, sil, branco, faiscas].filter(Boolean),
+    { autoAlpha: 0 });
+  /* a trava pinta a faixa com a cor do lutador e corta a animacao do carimbo:
+     sem devolver as duas aqui, a proxima cena herdaria */
+  gsap.set([faixa].filter(Boolean), { clearProps: 'backgroundImage' });
+  gsap.set([carimbo].filter(Boolean), { clearProps: 'animation,opacity,visibility' });
   gsap.set([fig].filter(Boolean), { autoAlpha: 1 });
+  const raios = ctx.el && ctx.el.querySelector('.raios');
+  gsap.set([fig, raios].filter(Boolean), { clearProps: 'animationPlayState' });
   /* as barrinhas sao esvaziadas no comeco da revelacao: se a cena for morta no
      meio, elas ficariam vazias para sempre */
   if (ctx.el) {
