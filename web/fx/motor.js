@@ -92,17 +92,17 @@ export function viva(chave) { return vivas.get(chave) || null; }
    uma cena nova, para nao herdar meio quadro da anterior que foi morta. */
 export function limpar(ctx) {
   if (!ctx) return;
-  const { camada, fig, ant, cinza, hachura, faixa, sil, branco, faiscas,
+  const { camada, fig, ant, cinza, hachura, faixa, mancha, sil, branco, faiscas,
           placa, carimbo, tag } = ctx;
   gsap.set([camada].filter(Boolean), { clearProps: 'transform,transformOrigin' });
   const nome = ctx.el && ctx.el.querySelector('.placa .nome');
   gsap.set([placa, nome, tag].filter(Boolean),
     { clearProps: 'transform,transformOrigin,textShadow' });
-  gsap.set([ant, cinza, hachura, faixa, sil, branco, faiscas].filter(Boolean),
-    { autoAlpha: 0 });
+  gsap.set([ant, cinza, hachura, faixa, mancha, sil, branco, faiscas].filter(Boolean),
+    { autoAlpha: 0, clearProps: 'transform' });
   /* a trava pinta a faixa com a cor do lutador e corta a animacao do carimbo:
      sem devolver as duas aqui, a proxima cena herdaria */
-  gsap.set([faixa].filter(Boolean), { clearProps: 'backgroundImage' });
+  gsap.set([faixa].filter(Boolean), { clearProps: 'backgroundColor' });
   gsap.set([carimbo].filter(Boolean), { clearProps: 'animation,opacity,visibility' });
   gsap.set([fig].filter(Boolean), { autoAlpha: 1 });
   const raios = ctx.el && ctx.el.querySelector('.raios');

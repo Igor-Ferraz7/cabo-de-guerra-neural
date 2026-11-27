@@ -578,7 +578,7 @@ function destravar(p) {
   pintarLado(p, false); pintarRoster();
   if (window.FX) {
     window.FX.emit('sel:cancelar-vinheta', {});   // desfez enquanto ela corria
-    window.FX.emit('sel:destravou', { p, cor: LUTADORES[P[p].cur].cor });
+    window.FX.emit('sel:destravou', { p, i: P[p].cur, cor: LUTADORES[P[p].cur].cor });
   }
 }
 

@@ -186,6 +186,42 @@ Fixar em todos os pedidos:
 
 Gerar **a série inteira de uma vez**, não um por dia.
 
+## 4.1 As texturas de nanquim — feitas, convertidas e ligadas (27/11)
+
+Sete imagens geradas no Gemini entraram no projeto. **Os originais ficam fora
+do repositório**; só o resultado da conversão é versionado, em `web/arte/`:
+
+| arquivo | origem | como o CSS usa |
+|---|---|---|
+| `varrida1/2/3.png` | 3 pinceladas diagonais | **máscara** da varrida da trava e da revelação |
+| `mancha1/2.png` | 2 respingos de impacto | **máscara** da mancha atrás do carimbo `PRONTO!` |
+| `hachura.webp` | linhas a 45° | o quadro cinza da revelação, em `multiply` |
+| `papel.webp` | grão de papel de HQ | véu sobre a tela de seleção, em `multiply` |
+
+**A ideia que faz as três varridas servirem para os catorze lutadores:** elas
+entram como `mask-image`, não como `background-image`. O CSS pinta um retângulo
+com a cor do lutador e a arte **recorta a forma**. Uma pincelada, catorze cores,
+nenhum arquivo a mais. A escolha de qual das três é feita na montagem da cena,
+pelo índice do lutador, para a trava não sair idêntica todas as vezes.
+
+Converter é um comando, e dá para repetir quando houver arte nova:
+
+```powershell
+py -3.12 ferramentas\preparar_arte.py <pasta-com-os-originais>
+```
+
+O script inverte a luminância para virar alfa (tinta preta → opaco, papel branco
+→ transparente) e grava em **LA**, não RGBA: numa máscara só o alfa conta, e
+guardar três canais de cor idênticos dobrava o arquivo. Total: **727 KB**.
+
+**O que isto aposentou:** a hachura em `repeating-linear-gradient` e a faixa em
+gradiente linear, que eram substitutos enquanto não havia arte. O gradiente era
+uma barra; agora é uma pincelada com falha de pincel e respingo na ponta.
+
+**O papel só aparece na seleção.** A regra da seção 1 diz que nada cobre o vídeo
+da partida — é a prova de que o YOLO está rodando. A regra do CSS é
+`body.selecionando::after`, e a classe some ao entrar na partida.
+
 > **Pendência registrada no `LICENCAS.md`:** anotar como a arte foi produzida.
 > É pergunta provável na apresentação, e a condição de uso de cada ferramenta é
 > diferente.

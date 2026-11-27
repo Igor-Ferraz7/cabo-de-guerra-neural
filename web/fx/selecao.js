@@ -42,7 +42,8 @@ export function preparar(el) {
       novo('img', 'fx-ant'),        // retrato anterior
       novo('img', 'fx-cinza'),      // o mesmo retrato dessaturado
       novo('div', 'fx-hachura'),    // linhas diagonais por cima do cinza
-      novo('div', 'fx-faixa'),      // faixa que varre o quadro
+      novo('div', 'fx-mancha'),     // mancha de nanquim atras do carimbo
+      novo('div', 'fx-faixa'),      // pincelada que varre o quadro
       novo('img', 'fx-sil'),        // silhueta branca chapada
       novo('canvas', 'fx-faiscas'), // faiscas da carga
       novo('div', 'fx-branco'),     // flash de tela cheia
@@ -52,7 +53,8 @@ export function preparar(el) {
   return {
     el, quadro, camada, fig,
     ant: pega('fx-ant'), cinza: pega('fx-cinza'), hachura: pega('fx-hachura'),
-    faixa: pega('fx-faixa'), sil: pega('fx-sil'), branco: pega('fx-branco'),
+    faixa: pega('fx-faixa'), mancha: pega('fx-mancha'),
+    sil: pega('fx-sil'), branco: pega('fx-branco'),
     faiscas: pega('fx-faiscas'),
     placa: el.querySelector('.placa'),
     carimbo: el.querySelector('.trava'),
@@ -172,6 +174,7 @@ export function revelacao(ctx, op = {}) {
   corte(tl, ctx.fig, false, 0.180);
 
   // t = 260 : cinza + hachura, e a faixa varrendo de baixo para cima
+  pincelada(ctx, op.i);
   corte(tl, ctx.sil, false, 0.260);
   corte(tl, ctx.cinza, true, 0.260);
   corte(tl, ctx.hachura, true, 0.260);
@@ -234,6 +237,18 @@ export function revelacao(ctx, op = {}) {
  */
 const T_CARGA = 1.2;                      // s, igual ao T_CONFIRMA do app.js
 const FAISCAS_MAX = 20;
+
+/* Escolhe qual das tres pinceladas de nanquim recorta a varrida. A escolha e
+   feita na MONTAGEM da cena, nao durante ela, entao continua seguro scrubar:
+   dentro de uma cena a mascara nunca muda. Varia pelo indice do lutador para
+   a trava nao sair identica todas as vezes. */
+function pincelada(ctx, i = 0) {
+  if (!ctx || !ctx.faixa) return;
+  const n = 1 + (Math.abs(i | 0) % 3);
+  const u = `url('arte/varrida${n}.png')`;
+  ctx.faixa.style.webkitMaskImage = u;
+  ctx.faixa.style.maskImage = u;
+}
 
 export function carga(ctx, k) {
   if (!ctx) return;
@@ -342,15 +357,13 @@ export function trava(ctx, op = {}) {
   tremor(tl, ctx.camada, 12, 3 * P, 0.160, 77, P);
 
   // t = 160 : varrida na cor do lutador, de baixo para cima
-  tl.set(ctx.faixa, {
-    backgroundImage: `linear-gradient(to bottom, ${cor}00 0%, ${cor} 20%, ${cor} 80%, ${cor}00 100%)`,
-  }, 0.160);
+  pincelada(ctx, op.i);
+  tl.set(ctx.faixa, { backgroundColor: cor }, 0.160);
   corte(tl, ctx.faixa, true, 0.160);
   [0, 1, 2, 3].forEach((i) => {
     tl.set(ctx.faixa, { skewY: -12, yPercent: 130 - i * 90 }, 0.160 + i * 0.035);
   });
   corte(tl, ctx.faixa, false, 0.300);
-  tl.set(ctx.faixa, { clearProps: 'backgroundImage' }, 0.300);
 
   /* t = 300 : o carimbo bate e a etiqueta pulsa.
      A batida do carimbo e feita AQUI, em passos, e nao devolvendo a animacao
@@ -360,6 +373,8 @@ export function trava(ctx, op = {}) {
   if (ctx.carimbo) {
     [[1.6, 0.300], [1.2, 0.340], [1.0, 0.380]].forEach(([s, t]) => {
       tl.set(ctx.carimbo, { autoAlpha: 1, scale: s }, t);
+      // a mancha de nanquim entra junto, atras do carimbo, e assenta com ele
+      tl.set(ctx.mancha, { autoAlpha: 1, scale: s * 0.72 }, t);
     });
     tl.set(ctx.carimbo, { clearProps: 'transform' }, 0.420);
   }
@@ -382,15 +397,13 @@ export function destrava(ctx, op = {}) {
   const tl = gsap.timeline({ paused: true });
   if (!ctx) return tl;
 
-  tl.set(ctx.faixa, {
-    backgroundImage: `linear-gradient(to bottom, ${cor}00 0%, ${cor} 20%, ${cor} 80%, ${cor}00 100%)`,
-  }, 0);
+  pincelada(ctx, op.i);
+  tl.set(ctx.faixa, { backgroundColor: cor }, 0);
   corte(tl, ctx.faixa, true, 0);
   [0, 1, 2].forEach((i) => {                    // de cima para baixo: o contrario
     tl.set(ctx.faixa, { skewY: -12, yPercent: -120 + i * 120 }, i * 0.035);
   });
   corte(tl, ctx.faixa, false, 0.110);
-  tl.set(ctx.faixa, { clearProps: 'backgroundImage' }, 0.110);
   tremor(tl, ctx.camada, 4, 2 / QPS, 0.035, 31);
   tl.set({}, {}, 0.300);
   return tl;
