@@ -44,7 +44,7 @@ Jogo interativo em que **duas pessoas disputam um cabo de guerra virtual usando 
 
 | Item | Situação |
 |---|---|
-| `jogo/servidor.py` + `web/` | **Versão atual.** Seleção de lutador + rodada **Espelho** no navegador (YOLO-Pose no Python, interface em HTML/Canvas). Servidor verificado ponta a ponta com foto real; interface e seleção por gesto conferidas com dados simulados. Ainda **não rodou com webcam real**. |
+| `jogo/servidor.py` + `web/` | **Versão atual.** Seleção de lutador + as **três rodadas** no navegador (YOLO-Pose no Python, interface em HTML/Canvas). **Já rodou com webcam real e duas pessoas** (25/11): é de onde saem os 8,5–9,4 FPS e a captura `banner/figuras/figura2.png`. O que ainda não foi testado com gente é o que mudou depois: Faroeste, Polichinelo, tutorial e os 14 lutadores. |
 | `jogo/jogo_prototipo.py` | Versão OpenCV, mantida como plano de retorno. Mesma lógica de semelhança e mesma máquina de estados. |
 | `banner/Banner_Cabo_de_Guerra_Neural_v1.pdf` | Primeira versão. Faltam nomes, e-mails, a Figura 2 real e o texto final de Resultados. |
 | `banner/build_banner.py` | Gera o PDF a partir do template. Edite o bloco CONFIGURAÇÃO no topo. |
@@ -69,6 +69,10 @@ cabo-de-guerra-neural/
 │   ├── app.js                        câmera, esqueleto, seleção por gesto e HUD
 │   ├── img/                          8 retratos dos lutadores (.webp)
 │   └── fontes/                       Bangers + Open Sans (locais, sem internet)
+├── docs/
+│   ├── build_documentacao.py         gera o PDF da documentação de engenharia
+│   ├── Cabo_de_Guerra_Neural_Documentacao.pdf
+│   └── figuras/partida.jpg           captura reduzida, embutida no PDF
 └── banner/
     ├── build_banner.py               gera Banner_Cabo_de_Guerra_Neural.pdf
     ├── diagrama_fluxo.py             gera figuras/figura1_fluxo.png
@@ -320,3 +324,17 @@ Medido com bots (60 partidas, reflexos 320 ms × 520 ms, 10% de chance de queima
 - LIN, T.-Y. et al. Microsoft COCO: common objects in context. ECCV 2014, p. 740-755.
 - MAJI, D. et al. YOLO-Pose: enhancing YOLO for multi person pose estimation using object keypoint similarity loss. CVPR Workshops 2022, p. 2637-2646.
 - REDMON, J. et al. You only look once: unified, real-time object detection. CVPR 2016, p. 779-788.
+
+**Documentação de engenharia (27/11).** Segunda entrega pedida pelo professor, separada do banner: identificação, descritivo técnico, diagrama de arquitetura e status/próximos passos. Gerada por `docs/build_documentacao.py` (reportlab, mesma fonte e o mesmo azul do banner, para as duas peças combinarem).
+
+Erros que a versão inicial do documento afirmava e que foram corrigidos contra o código:
+
+- **"OpenCV: captura da webcam e desenho dos esqueletos".** Isso é o `jogo_prototipo.py`, não a versão atual. Hoje a captura é `getUserMedia` no navegador, o desenho é Canvas 2D, e o OpenCV entra só no `cv2.imdecode` do JPEG recebido.
+- **FastAPI, uvicorn e WebSocket não apareciam.** São o servidor inteiro, e o professor pediu frameworks explicitamente.
+- **"6 classes de pose", incluindo "braços fechados".** São **5**: `neutra, Y, T, saque, bracos_abertos` (`jogo/poses.py`).
+- **FPS/latência listados como "falta medir".** Já foram medidos (8,5–9,4 FPS, ~100 ms). O que falta é **repetir a 2,5 m** — a medição existente é de perto.
+- **"Escolher o esqueleto mais próximo" listado como pendente.** Já é o critério (`np.argsort(-area)[:2]`). O que falta é restringir a área válida de cada lado.
+
+A Open Sans do template **não tem os glifos de seta, visto e círculo vazio**: eles saem como espaço em branco. As marcas de lista são desenhadas em vetor (`marca()` em `docs/build_documentacao.py`). Qualquer texto novo com `→` some sem avisar.
+
+**Três campos dependem da equipe** e saem em vermelho no PDF enquanto não forem preenchidos no topo do script: nome completo e papel real de cada integrante. O link do repositório foi montado a partir do usuário do GitHub (`Igor-Ferraz7`) e **só passa a ser verdade depois do `git push`** — o que a AGPL torna obrigatório de qualquer forma.
