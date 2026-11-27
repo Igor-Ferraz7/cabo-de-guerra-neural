@@ -31,11 +31,13 @@ from reportlab.platypus import Paragraph
 # Deixe exatamente como está para o campo sair em vermelho no PDF.
 
 AUTORES = [
-    ("Igor Ferraz", "pipeline de visão (YOLO-Pose), motor de rodadas, "
-                    "interface web e banco de testes por bots"),
-    ("[NOME COMPLETO DO SEGUNDO INTEGRANTE]",
-     "[papel real: ex. coleta do dataset de poses, treino e avaliação da MLP, "
-     "montagem e testes com visitantes]"),
+    ("Igor Sousa Ferraz Aragão",
+     "arquitetura do sistema (servidor, WebSocket e motor de rodadas), "
+     "interface web, direção de arte e animação, e montagem do estande"),
+    ("Gabriel Cardoso Vieira",
+     "classificador de poses treinado pela equipe: coleta e rotulagem do "
+     "dataset, treino e avaliação da MLP e integração ao motor de rodadas; "
+     "medições de desempenho e testes de borda"),
 ]
 
 # O repositório tem de estar PÚBLICO e no ar antes de enviar: a Ultralytics é
