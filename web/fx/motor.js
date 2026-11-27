@@ -92,8 +92,17 @@ export function viva(chave) { return vivas.get(chave) || null; }
    uma cena nova, para nao herdar meio quadro da anterior que foi morta. */
 export function limpar(ctx) {
   if (!ctx) return;
-  const { camada, fig, ant, sil, branco, tileIn, ruido } = ctx;
-  gsap.set([camada, tileIn].filter(Boolean), { clearProps: 'transform' });
-  gsap.set([ant, sil, branco, ruido].filter(Boolean), { autoAlpha: 0 });
+  const { camada, fig, ant, cinza, hachura, faixa, sil, branco, placa } = ctx;
+  gsap.set([camada].filter(Boolean), { clearProps: 'transform,transformOrigin' });
+  const nome = ctx.el && ctx.el.querySelector('.placa .nome');
+  gsap.set([placa, nome].filter(Boolean),
+    { clearProps: 'transform,transformOrigin,textShadow' });
+  gsap.set([ant, cinza, hachura, faixa, sil, branco].filter(Boolean), { autoAlpha: 0 });
   gsap.set([fig].filter(Boolean), { autoAlpha: 1 });
+  /* as barrinhas sao esvaziadas no comeco da revelacao: se a cena for morta no
+     meio, elas ficariam vazias para sempre */
+  if (ctx.el) {
+    const barras = ctx.el.querySelectorAll('.stats .barra i');
+    if (barras.length) gsap.set(barras, { clearProps: 'opacity' });
+  }
 }

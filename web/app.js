@@ -617,7 +617,10 @@ function atualizarSelecao(dt, agora) {
     const s = P[p];
     if (s.paradoEm && !s.revelado && !s.travado && agora - s.paradoEm > T_PAROU) {
       s.revelado = true;
-      if (window.FX) window.FX.emit('sel:parou', { p, i: s.cur });
+      const f = LUTADORES[s.cur];
+      // fx/fy sao o ponto de enquadramento do retrato: e nele que o close centra
+      if (window.FX) window.FX.emit('sel:parou',
+        { p, i: s.cur, arte: arte(f), fx: f.fx, fy: f.fy, cor: f.cor });
     }
   }
 

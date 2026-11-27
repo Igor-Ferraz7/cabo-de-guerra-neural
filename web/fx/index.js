@@ -36,6 +36,7 @@ const MANEJO = {
   'sel:parou': (d) => {
     const ctx = lados[d.p];
     if (!ctx) return;
+    limpar(ctx);
     tocar(`sel${d.p}`, S.revelacao(ctx, d));
   },
 
@@ -77,7 +78,7 @@ export const FX = {
       const { tileIn, ruido } = S.alvoTile(tiles, op.para || 0);
       return S.troca(ctx, { ...op, tileIn, ruido, som: false });
     }
-    if (nome === 'revelacao') return S.revelacao(ctx, op);
+    if (nome === 'revelacao') return S.revelacao(ctx, { ...op, som: false });
     if (nome === 'trava') return S.trava(ctx, op);
     if (nome === 'destrava') return S.destrava(ctx, op);
     return gsap.timeline({ paused: true });

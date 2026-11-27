@@ -58,8 +58,9 @@ body.estudio #palco, body.estudio #modos { display: none; }
 
 <div class="est-barra">
   <a href="?folha=troca">folha: troca rápida</a>
+  <a href="?folha=revelacao">folha: revelação</a>
   <a href="?folha=troca&amp;dir=-1">folha: troca para a esquerda</a>
-  <a href="?cena=troca&amp;t=0.04">cena única: troca em 40 ms</a>
+  <a href="?cena=revelacao&amp;t=0.3">cena única: revelação em 300 ms</a>
   <span id="est-ajuda"></span>
 </div>
 
@@ -132,6 +133,7 @@ function celula(html, f, anterior, t, op) {
   const { tileIn, ruido } = alvoTile(prepararTiles(cel), 0);
   const tl = CENAS[op.cena](ctx, {
     dir: op.dir, arteDe: arte(anterior), som: false, tileIn, ruido,
+    arte: arte(f), fx: f.fx, fy: f.fy, cor: f.cor,
   });
   /* Timeline criada pausada não renderiza ao buscar EXATAMENTE 0: os .set() do
      instante zero ficam por aplicar e o primeiro quadro da folha sairia

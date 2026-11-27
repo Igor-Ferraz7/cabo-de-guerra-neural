@@ -403,3 +403,35 @@ Também conferido ao vivo: `sel:mover` e `sel:parou` disparam, e o `sel:parou` s
 **Armadilha de verificação, que vale para sábado:** com o painel do navegador **escondido**, o `requestAnimationFrame` para, o GSAP congela e **parece que nada anima**. A primeira medição ao vivo deu "nada acontece" por isso, não por defeito. Com o painel à vista, 24 quadros em 400 ms e tudo correu. Antes de concluir que uma animação está quebrada, confira se o painel está visível.
 
 **Ainda não conferido:** os sons (o painel do navegador bloqueia áudio), o ritmo real de 14 passos seguidos, e o FPS no notebook da feira.
+
+---
+
+## 14. Revelação completa (3.2) — pronta e conferida (27/11)
+
+Conferida na folha (`estudio.html?folha=revelacao`) e **ao vivo**, com tecla de verdade, medindo o estado real da tela:
+
+| t na cena | o que foi medido | bate com §3.2 |
+|---|---|---|
+| 0 ms | camada em escala **2,2×**, origem no ponto de enquadramento do retrato | sim |
+| 180 ms | escala volta a 1, **silhueta branca** visível, retrato oculto | sim |
+| 260 ms | **cinza + hachura + faixa** visíveis, faixa varrendo em 4 passos | sim |
+| 420 ms | cor de volta, o **nome bate** (1,4 → 1,15 → 1) com fantasma ciano/magenta | sim |
+| 500–600 ms | as barras acendem **uma a uma**, 40 ms entre elas, até 15/15 | sim |
+
+Ao vivo: `sel:mover` → troca rápida → 350 ms parado → `sel:parou` → revelação, com o close aparecendo ~350 ms depois da última troca e tudo assentado em ~1,1 s.
+
+### Três decisões que a implementação obrigou
+
+**A hachura é `repeating-linear-gradient`, não imagem gerada.** São linhas pretas a 45°, exatamente o que o pedido ao Gemini (§6.4) descreveria. Assim nada entra no repositório por causa disto, e a densidade se ajusta mudando dois números no CSS. **Um pedido a menos na lista do Gemini.**
+
+**Quem bate é o NOME, não a placa inteira.** Escalando a placa, a linha de baixo (origem e estilo) crescia junto, saía do quadro, e o fantasma ciano/magenta pousava em texto que não é letreiro. Ficou feio na primeira folha de contato.
+
+**As barras acendem por OPACIDADE, não por escala.** Os `<i>` das barrinhas já carregam um `skew` do CSS (as placas tortas da identidade), e **o GSAP reescreve o `transform` inteiro ao mexer em escala** — as barrinhas saíam do lugar e apareciam fora do painel. Mesma armadilha da faixa branca, que por isso tem o `skew` posto pela timeline e não pelo CSS.
+
+> **Regra para sábado:** antes de animar `scale`, `x` ou `y` em qualquer elemento, confira se o CSS já põe um `transform` nele. Se põe, ou a timeline reaplica esse transform junto, ou anima-se outra propriedade.
+
+### O que continua sem teste
+
+- **Os sons.** O painel do navegador bloqueia áudio: `whoosh` e `impacto` estão ligados nos instantes certos, mas ninguém os ouviu.
+- **O ritmo real:** 14 passos seguidos a 320 ms com o braço levantado, e a revelação sendo cortada no meio por uma troca nova.
+- **FPS no notebook da feira.**
