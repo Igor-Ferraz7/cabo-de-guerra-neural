@@ -494,3 +494,42 @@ Ou seja: naquele navegador **nenhuma animação CSS do projeto roda** — nem o 
 - **A carga disparada por gesto de verdade.** O `k` vem do `app.js` contando o tempo com os dois braços no alto, e isso precisa de câmera. Só a função que desenha foi conferida, ponto a ponto.
 - **O ritmo real** de 14 passos seguidos a 320 ms.
 - **FPS no notebook da feira.**
+
+---
+
+## 16. Vinheta (seção 4) — pronta e conferida (27/11)
+
+Ela cabe nos **2 s de `T_PRONTOS` que o jogo já esperava**, então não acrescenta nada ao orçamento de 2 minutos por visitante.
+
+### O que foi medido ao vivo, com teclas de verdade
+
+| t | o que a tela mostrava |
+|---|---|
+| 50 ms | `CABO` |
+| 200 ms | `DE` |
+| 300 ms | `GUERRA` |
+| 420 ms | fitas amarelas cruzadas em X, com `CABO DE GUERRA ·` repetido |
+| 900 ms | face a face: tela partida na diagonal, cada metade na cor do lutador, retratos entrando de lados opostos, `VS` batendo no meio |
+| 1860 ms | **cortina preta cobrindo**, de −86 px a 661 px numa janela de 574 px — sobra dos dois lados |
+| 2062 ms | cortina ainda cobrindo, e a tela **já é a partida** |
+| 2405 ms | cortina fora, vinheta oculta, partida à vista |
+
+**A linha dos 2062 ms é o motivo de a vinheta existir.** O corte entre a seleção e a partida sempre foi seco; agora ele acontece debaixo da cortina e ninguém vê.
+
+### Como ela se encaixa sem mexer no tempo do jogo
+
+A troca de tela continua sendo do `app.js`, no tempo dele. A vinheta só garante que, no instante em que ela acontece, a cortina está por cima. Nada de sincronizar dois relógios: a vinheta recebe o `T_PRONTOS` no próprio evento (`sel:prontos`) e posiciona a cortina a partir dele. Se esse tempo mudar, a vinheta acompanha sozinha.
+
+**Saída de emergência:** desfazer a confirmação (`G` / `Backspace`) ou voltar para a seleção no meio da vinheta dispara `sel:cancelar-vinheta`, que mata a timeline e limpa tudo. Sem isso a cortina preta ficaria parada cobrindo o jogo — e, numa feira, ninguém saberia o que fazer.
+
+### Duas decisões de implementação
+
+**A vinheta não usa a classe `escondido` do projeto.** Ela usa `display:none`, e o `autoAlpha` do GSAP mexe em `visibility` e `opacity`: os dois juntos brigam, e o elemento fica invisível mesmo com a timeline correndo. A vinheta nasce com `opacity:0; visibility:hidden` no CSS e quem manda nela é só a timeline.
+
+**O estúdio precisou de um palco em escala.** Os tamanhos da vinheta estão em `vmin`, que é unidade de **viewport** e não encolhe junto com uma célula estreita: espremida numa coluna de 95 px, ela saía com letras gigantes transbordando por cima das células vizinhas. Agora cada célula recebe um palco do tamanho real da janela, reduzido por `scale` — tudo mantém a proporção que terá na tela cheia. A folha da vinheta usa 3 colunas em vez de 7.
+
+### O que continua sem teste
+
+- **Os sons** (`whoosh` duplo na abertura, `impacto` duplo no `VS`, `whoosh` na cortina). Ninguém ouviu nenhum som do projeto ainda.
+- **Como ela fica numa tela de 16:9 grande**, a 2,5 m. Foi conferida numa janela pequena.
+- A vinheta **com o servidor ligado**: aqui a partida apareceu vazia por baixo da cortina, porque não havia servidor. O encadeamento com o cartaz da primeira rodada não foi visto.

@@ -739,3 +739,70 @@ body.configurando #video { filter: saturate(0.9) contrast(1.05) !important; }
   position: absolute; inset: 0; width: 100%; height: 100%;
   opacity: 0; visibility: hidden; pointer-events: none; z-index: 2;
 }
+
+/* ====================================================== vinheta (secao 4)
+   Ocupa os 2 s de T_PRONTOS que o jogo ja esperava: nao acrescenta tempo a
+   visita. Fica por cima de tudo porque a troca de tela acontece por baixo da
+   cortina preta - e e isso que esconde o corte. */
+.vinheta {
+  position: fixed; inset: 0; z-index: 90; overflow: hidden;
+  pointer-events: none; opacity: 0; visibility: hidden;
+}
+.vinheta.vn-embutida { position: absolute; }   /* so no estudio */
+
+.vn-letras, .vn-fitas, .vn-face, .vn-cortina { position: absolute; inset: 0; }
+
+/* as tres palavras: uma por vez, corte seco, bem grandes (2,5 m de distancia) */
+.vn-p {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 19vmin; letter-spacing: 0.03em; color: var(--papel, #fff8e7);
+  -webkit-text-stroke: 0.5vmin #121015;
+  opacity: 0; visibility: hidden;
+  background: var(--tinta, #121015);
+}
+
+/* fitas cruzadas em X com o nome repetido */
+.vn-fita {
+  position: absolute; left: -25%; width: 150%; height: 11vmin;
+  top: 44%; display: flex; align-items: center; overflow: hidden;
+  background: var(--cap, #ffe14d); border-block: 0.5vmin solid #121015;
+  opacity: 0; visibility: hidden;
+}
+.vn-fita b {
+  font-size: 5vmin; color: #121015; white-space: nowrap;
+  letter-spacing: 0.08em; padding-left: 2vmin;
+}
+.vn-f1 { transform: rotate(-14deg); }
+.vn-f2 { transform: rotate(14deg); }
+
+/* face a face: a tela parte na diagonal, cada metade na cor do lutador */
+.vn-face { opacity: 0; visibility: hidden; background: var(--tinta, #121015); }
+.vn-lado {
+  position: absolute; inset: 0; background: var(--vc, #444);
+  display: grid; place-items: end center;
+}
+.vn-a { clip-path: polygon(0 0, 62% 0, 38% 100%, 0 100%); }
+.vn-b { clip-path: polygon(62% 0, 100% 0, 100% 100%, 38% 100%); }
+.vn-lado img {
+  position: absolute; bottom: 0; height: 88%; width: auto; max-width: none;
+  object-fit: contain;
+}
+.vn-a img { left: 2%; }
+.vn-b img { right: 2%; transform: scaleX(-1); }
+.vn-nome {
+  position: relative; z-index: 2; margin-bottom: 3vmin;
+  font-size: 5.5vmin; color: var(--papel, #fff8e7);
+  -webkit-text-stroke: 0.35vmin #121015;
+}
+.vn-vs {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 22vmin; color: var(--cap, #ffe14d);
+  opacity: 0; visibility: hidden; z-index: 3;
+}
+
+/* cortina de nanquim: cobre a tela enquanto o jogo troca de tela por baixo */
+.vn-cortina {
+  background: #121015; opacity: 0; visibility: hidden;
+  left: -15%; width: 130%;
+  clip-path: polygon(8% 0, 100% 0, 92% 100%, 0 100%);
+}

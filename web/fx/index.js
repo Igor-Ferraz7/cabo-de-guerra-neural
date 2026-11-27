@@ -11,15 +11,18 @@
 import { tocar, matar, limpar } from './motor.js';
 import { SOM } from './som.js';
 import * as S from './selecao.js';
+import * as V from './vinheta.js';
 
 const lados = [null, null];
 let tiles = [];
+let vn = null;
 let pronto = false;
 
 function iniciar(raiz = document) {
   lados[0] = S.preparar(raiz.querySelector('#sel1'));
   lados[1] = S.preparar(raiz.querySelector('#sel2'));
   tiles = S.prepararTiles(raiz.querySelector('#roster') || raiz);
+  vn = V.preparar(document.body);
   pronto = true;
 }
 
@@ -59,7 +62,17 @@ const MANEJO = {
     tocar(`sel${d.p}`, S.destrava(ctx, d));
   },
 
-  'sel:prontos': () => { },                       // vinheta: sabado (secao 4)
+  'sel:prontos': (d) => {
+    if (!vn) return;
+    V.limparVinheta(vn);
+    tocar('vinheta', V.vinheta(vn, {
+      a: d.a, b: d.b, troca: (d.dur || 2000) / 1000,
+    }));
+  },
+
+  /* a partida foi abortada no meio da vinheta (ESC, reinicio): sem isto a
+     cortina preta ficaria parada na tela cobrindo o jogo */
+  'sel:cancelar-vinheta': () => { matar('vinheta'); V.limparVinheta(vn); },
   'cartaz': () => SOM.tocar('cartaz', 0.55),
   'ponto': () => SOM.tocar('ponto', 0.6),
   'ko': () => SOM.tocar('ko', 0.8),

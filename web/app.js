@@ -562,14 +562,24 @@ function travar(p) {
   if (window.FX) window.FX.emit('sel:travou', { p, i: P[p].cur, cor: LUTADORES[P[p].cur].cor });
   if (P[0].travado && P[1].travado) {
     tela = 'prontos'; prontosEm = performance.now();
-    if (window.FX) window.FX.emit('sel:prontos', { a: P[0].cur, b: P[1].cur });
+    if (window.FX) {
+      const ficha = (i) => {
+        const f = LUTADORES[P[i].cur];
+        return { nome: f.nome, curto: f.curto, cor: f.cor, arte: arte(f), fx: f.fx, fy: f.fy };
+      };
+      // a vinheta ocupa os T_PRONTOS que ja existem: nao acrescenta tempo a visita
+      window.FX.emit('sel:prontos', { a: ficha(0), b: ficha(1), dur: T_PRONTOS });
+    }
   }
 }
 function destravar(p) {
   if (!P[p].travado || tela === 'partida') return;
   P[p].travado = false; tela = 'selecao'; prontosEm = 0;
   pintarLado(p, false); pintarRoster();
-  if (window.FX) window.FX.emit('sel:destravou', { p, cor: LUTADORES[P[p].cur].cor });
+  if (window.FX) {
+    window.FX.emit('sel:cancelar-vinheta', {});   // desfez enquanto ela corria
+    window.FX.emit('sel:destravou', { p, cor: LUTADORES[P[p].cur].cor });
+  }
 }
 
 function maoCima(j, pulso, ombro) {
@@ -654,6 +664,7 @@ function irParaPartida() {
 function voltarParaSelecao() {
   tela = 'selecao'; prontosEm = 0;
   cartazEntradaPendente = false;
+  if (window.FX) window.FX.emit('sel:cancelar-vinheta', {});
   P[0].travado = P[1].travado = false;
   P[0].conf = P[1].conf = 0;
   P[0].revelado = P[1].revelado = false;
