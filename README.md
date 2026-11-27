@@ -45,6 +45,10 @@ jogo **roda sem internet**.
 
 Instruções completas, teclas e ajustes: [COMO_RODAR.md](COMO_RODAR.md).
 
+Quem vai continuar o trabalho começa por
+[PROXIMOS_PASSOS.md](PROXIMOS_PASSOS.md): o que falta, em que ordem, e o que
+cada um já fez.
+
 ## Como funciona
 
 ```
