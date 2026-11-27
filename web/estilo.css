@@ -685,8 +685,11 @@ body.configurando #video { filter: saturate(0.9) contrast(1.05) !important; }
   opacity: 0; visibility: hidden; mix-blend-mode: screen;
 }
 
-/* estatica de TV no icone da grade, 2 quadros na troca */
-.tile .in { position: relative; }
+/* estatica de TV no icone da grade, 2 quadros na troca.
+   NAO declarar `position` no `.tile .in` aqui: la em cima ele ja e
+   `position: absolute` com `inset: 4px 5px`, e sobrescrever por `relative`
+   fazia o .in colapsar - o retrato de todos os 14 icones sumia da grade.
+   Absolute ja serve de bloco de contencao para o ruido. */
 .tile .fx-ruido {
   position: absolute; inset: 0; z-index: 2; opacity: 0; visibility: hidden;
   mix-blend-mode: screen; background-size: 160% 160%;
